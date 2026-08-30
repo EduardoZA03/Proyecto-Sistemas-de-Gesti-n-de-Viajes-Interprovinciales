@@ -1,0 +1,50 @@
+﻿:root {
+    --chaski-teal: #17a6a0;
+    --chaski-teal-dark: #128f8a;
+}
+
+body {
+    margin: 0;
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+/* HEADER */
+.chaski-header {
+    background-color: var(--chaski-teal);
+    color: #fff;
+    height: 70px;
+}
+
+.chaski-logo {
+    height: 40px;
+}
+
+/* SIDEBAR */
+.chaski-sidebar {
+    width: 220px;
+    min-height: calc(100vh - 70px);
+    background-color: #fff;
+    border-right: 1px solid #e5e5e5;
+    padding-top: 1rem;
+}
+
+    .chaski-sidebar .nav-link {
+        color: #333;
+        padding: 0.75rem 1.25rem;
+        border-radius: 0;
+    }
+
+        .chaski-sidebar .nav-link:hover {
+            background-color: #f1f1f1;
+        }
+
+        .chaski-sidebar .nav-link.active {
+            background-color: var(--chaski-teal);
+            color: #fff;
+        }
+
+/* CONTENIDO */
+.chaski-content {
+    min-height: calc(100vh - 70px);
+}
