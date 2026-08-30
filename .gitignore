@@ -1,0 +1,34 @@
+# Visual Studio / .NET
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]in/
+[Oo]bj/
+build/
+bld/
+[Ll]og/
+[Ll]ogs/
+
+# Rider
+.idea/
+
+# NuGet
+*.nupkg
+packages/
+!packages/build/
+
+# ASP.NET
+appsettings.*.local.json
+
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store
