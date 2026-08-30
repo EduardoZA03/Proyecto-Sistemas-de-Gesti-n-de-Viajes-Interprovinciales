@@ -48,3 +48,47 @@ body {
 .chaski-content {
     min-height: calc(100vh - 70px);
 }
+
+.text-teal {
+    color: var(--chaski-teal);
+}
+
+.seat {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+}
+
+.seat-disponible {
+    background-color: #d3f4d1;
+    color: #1a7a1a;
+    border: 1px solid #9fdb9c;
+}
+
+.seat-ocupado {
+    background-color: #e2e2e2;
+    color: #999;
+    border: 1px solid #ccc;
+    cursor: not-allowed;
+}
+
+.seat-seleccionado {
+    background-color: var(--chaski-teal) !important;
+    color: #fff !important;
+    border: 1px solid var(--chaski-teal-dark) !important;
+}
+
+.seat-legend {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    margin-right: 4px;
+    vertical-align: middle;
+}

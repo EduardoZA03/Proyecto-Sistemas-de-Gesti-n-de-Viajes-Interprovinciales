@@ -1,0 +1,186 @@
+﻿@model NuevaReservaVM
+@{
+    ViewData["Title"] = "Nueva Reserva";
+}
+
+<nav class="text-muted small mb-2">INICIO &gt; RESERVAS &gt; <span class="text-dark fw-bold">NUEVA RESERVA</span></nav>
+<h4 class="fw-bold mb-4"><i class="fa-solid fa-ticket me-2"></i>Registrar viaje (Nueva reserva)</h4>
+
+<!-- 1. BÚSQUEDA -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h6 class="fw-bold text-teal mb-3">1. BÚSQUEDA DE VIAJE</h6>
+        <form asp-action="BuscarViajes" method="post" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Origen</label>
+                <input asp-for="Origen" class="form-control" placeholder="Lima" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Destino</label>
+                <input asp-for="Destino" class="form-control" placeholder="Arequipa" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Fecha</label>
+                <input asp-for="FechaViaje" type="date" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Pasajeros</label>
+                <input asp-for="Pasajeros" type="number" min="1" class="form-control" />
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn chaski-btn-primary w-100">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.ViajesDisponibles.Any())
+{
+    <!-- 2. RESULTADOS -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h6 class="fw-bold text-teal mb-3">2. SELECCIÓN DE VIAJE DISPONIBLE</h6>
+            <form asp-action="SeleccionarViaje" method="post">
+                <input type="hidden" asp-for="Origen" />
+                <input type="hidden" asp-for="Destino" />
+                <input type="hidden" asp-for="FechaViaje" />
+                <input type="hidden" asp-for="Pasajeros" />
+                <table class="table align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th></th>
+                            <th>Servicio</th>
+                            <th>Empresa</th>
+                            <th>Salida</th>
+                            <th>Llegada</th>
+                            <th>Duración</th>
+                            <th>Precio desde</th>
+                            <th>Asientos disp.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var v in Model.ViajesDisponibles)
+                        {
+                            <tr>
+                                <td><input type="radio" name="IdViajeSeleccionado" value="@v.IdViaje" required /></td>
+                                <td>@v.Servicio</td>
+                                <td>@v.Empresa</td>
+                                <td>@v.HoraSalida</td>
+                                <td>@v.HoraLlegada</td>
+                                <td>@v.Duracion</td>
+                                <td>S/ @v.PrecioDesde.ToString("0.00")</td>
+                                <td><span class="badge bg-success-subtle text-success">@v.AsientosDisponibles</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <button type="submit" class="btn chaski-btn-primary">Continuar con este viaje</button>
+            </form>
+        </div>
+    </div>
+}
+
+@if (Model.Asientos.Any())
+{
+    <form asp-action="GuardarReserva" method="post">
+        <input type="hidden" asp-for="IdViajeSeleccionado" />
+        <div class="row">
+            <!-- 4. ASIENTOS -->
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h6 class="fw-bold text-teal mb-3">4. SELECCIÓN DE ASIENTO</h6>
+                        <div class="d-flex flex-wrap gap-2 mb-3" id="seatMap">
+                            @foreach (var a in Model.Asientos)
+                            {
+                                var claseEstado = a.Estado == "Ocupado" ? "seat-ocupado" : "seat-disponible";
+                                <div class="seat @claseEstado" data-id="@a.IdAsiento" onclick="seleccionarAsiento(this)">@a.Numero</div>
+                            }
+                        </div>
+                        <input type="hidden" id="AsientoSeleccionado" name="AsientoSeleccionado" asp-for="AsientoSeleccionado" />
+                        <div class="d-flex gap-3 small">
+                            <span><span class="seat-legend seat-disponible"></span> Disponible</span>
+                            <span><span class="seat-legend seat-ocupado"></span> Ocupado</span>
+                            <span><span class="seat-legend seat-seleccionado"></span> Seleccionado</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. DATOS DEL PASAJERO -->
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h6 class="fw-bold text-teal mb-3">5. DATOS DEL PASAJERO</h6>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label">Tipo documento</label>
+                                <select asp-for="TipoDocumento" class="form-select">
+                                    <option>DNI</option>
+                                    <option>Carné Extranjería</option>
+                                    <option>Pasaporte</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Número documento</label>
+                                <input asp-for="NumeroDocumento" class="form-control" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Nombres</label>
+                                <input asp-for="Nombres" class="form-control" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Apellidos</label>
+                                <input asp-for="Apellidos" class="form-control" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Teléfono</label>
+                                <input asp-for="Telefono" class="form-control" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Correo</label>
+                                <input asp-for="Correo" class="form-control" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Edad</label>
+                                <input asp-for="Edad" type="number" class="form-control" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Género</label>
+                                <select asp-for="Genero" class="form-select">
+                                    <option>Masculino</option>
+                                    <option>Femenino</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESUMEN -->
+        <div class="card">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>Ruta:</strong> @Model.Origen - @Model.Destino &nbsp;|&nbsp;
+                    <strong>Fecha:</strong> @Model.FechaViaje?.ToString("dd/MM/yyyy")
+                </div>
+                <button type="submit" class="btn chaski-btn-primary px-4">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> Guardar reserva
+                </button>
+            </div>
+        </div>
+    </form>
+    @section Scripts {
+        <script>
+            function seleccionarAsiento(el) {
+                if (el.classList.contains('seat-ocupado')) return;
+                document.querySelectorAll('.seat-seleccionado').forEach(s => s.classList.remove('seat-seleccionado'));
+                el.classList.add('seat-seleccionado');
+                document.getElementById('AsientoSeleccionado').value = el.dataset.id;
+            }
+        </script>
+    }
+}
