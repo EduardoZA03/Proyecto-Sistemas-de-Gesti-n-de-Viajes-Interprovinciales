@@ -5,10 +5,10 @@
         // Filtros
         public DateTime? FechaInicio { get; set; }
         public DateTime? FechaFin { get; set; }
-        public string CodigoVenta { get; set; }
-        public string Pasajero { get; set; }
-        public string Estado { get; set; }
-        public string MetodoPago { get; set; }
+        public string CodigoVenta { get; set; } = string.Empty;
+        public string Pasajero { get; set; } = string.Empty;
+        public string Estado { get; set; } = string.Empty;
+        public string MetodoPago { get; set; } = string.Empty;
 
         // KPIs
         public decimal TotalVentas { get; set; }
@@ -18,6 +18,6 @@
 
         // Resultados
         public List<VentaVM> Ventas { get; set; } = new();
-        public VentaVM VentaSeleccionada { get; set; }
+        public VentaVM VentaSeleccionada { get; set; } = null!;
     }
 }

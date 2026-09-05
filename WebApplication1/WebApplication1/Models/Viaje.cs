@@ -10,11 +10,11 @@
         public DateTime FechaSalida { get; set; }
         public TimeSpan HoraSalida { get; set; }
         public decimal PrecioBase { get; set; }
-        public string Estado { get; set; }
+        public string Estado { get; set; } = string.Empty;
 
-        public Ruta Ruta { get; set; }
-        public Bus Bus { get; set; }
-        public ICollection<Tarifa> Tarifas { get; set; }
-        public ICollection<Reserva> Reservas { get; set; }
+        public Ruta Ruta { get; set; } = null!;
+        public Bus Bus { get; set; } = null!;
+        public ICollection<Tarifa> Tarifas { get; set; } = new List<Tarifa>();
+        public ICollection<Reserva> Reservas { get; set; } = new List<Reserva>();
     }
 }

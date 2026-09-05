@@ -3,14 +3,14 @@
     public class Empresa
     {
         public int IdEmpresa { get; set; }
-        public string RazonSocial { get; set; }
-        public string Ruc { get; set; }
-        public string Telefono { get; set; }
-        public string Correo { get; set; }
-        public string Direccion { get; set; }
-        public string Estado { get; set; }
+        public string RazonSocial { get; set; } = string.Empty;
+        public string Ruc { get; set; } = string.Empty;
+        public string Telefono { get; set; } = string.Empty;
+        public string Correo { get; set; } = string.Empty;
+        public string Direccion { get; set; } = string.Empty;
+        public string Estado { get; set; } = string.Empty;
 
-        public ICollection<Terminal> Terminales { get; set; }
-        public ICollection<Bus> Buses { get; set; }
+        public ICollection<Terminal> Terminales { get; set; } = new List<Terminal>();
+        public ICollection<Bus> Buses { get; set; } = new List<Bus>();
     }
 }
