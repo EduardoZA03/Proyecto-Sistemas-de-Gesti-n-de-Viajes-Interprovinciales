@@ -1,0 +1,18 @@
+﻿@model VentaVM
+<h6 class="fw-bold text-teal mb-3">DETALLE DE VENTA</h6>
+@if (Model == null)
+{
+    <p class="text-muted small text-center">No se encontró la venta.</p>
+}
+else
+{
+    <p class="mb-1"><strong>Código:</strong> @Model.Codigo</p>
+    <p class="mb-1"><strong>Pasajero:</strong> @Model.Pasajero</p>
+    <p class="mb-1"><strong>Documento:</strong> @Model.Documento</p>
+    <p class="mb-1"><strong>Ruta:</strong> @Model.Ruta</p>
+    <p class="mb-1"><strong>Asientos:</strong> @Model.Asientos</p>
+    <p class="mb-1"><strong>Monto:</strong> S/ @Model.MontoTotal.ToString("0.00")</p>
+    <p class="mb-1"><strong>Pago:</strong> @Model.MetodoPago</p>
+    <p class="mb-3"><strong>Estado:</strong> <span class="badge bg-success-subtle text-success">@Model.Estado</span></p>
+    <button class="btn chaski-btn-primary w-100"><i class="fa-solid fa-file-invoice me-1"></i> Ver comprobante</button>
+}

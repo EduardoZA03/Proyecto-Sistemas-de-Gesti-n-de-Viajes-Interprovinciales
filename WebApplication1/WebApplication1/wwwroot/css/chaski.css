@@ -92,3 +92,11 @@ body {
     margin-right: 4px;
     vertical-align: middle;
 }
+
+.kpi-card {
+    border-left: 4px solid var(--chaski-teal);
+}
+
+.kpi-danger {
+    border-left: 4px solid #dc3545 !important;
+}
