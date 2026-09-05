@@ -1,0 +1,182 @@
+﻿@model CancelacionesIndexVM
+@{
+    ViewData["Title"] = "Cancelaciones";
+}
+
+<nav class="text-muted small mb-2">INICIO &gt; <span class="text-dark fw-bold">CANCELACIONES</span></nav>
+<h4 class="fw-bold"><i class="fa-solid fa-circle-xmark me-2 text-danger"></i>Gestión de Cancelaciones</h4>
+<p class="text-muted">Busca y administra las cancelaciones de reservas y ventas.</p>
+
+<!-- FILTROS -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h6 class="fw-bold text-teal mb-3">FILTROS DE BÚSQUEDA</h6>
+        <form asp-action="Index" method="post" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label">Fecha inicio</label>
+                <input asp-for="FechaInicio" type="date" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Fecha fin</label>
+                <input asp-for="FechaFin" type="date" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Estado</label>
+                <select asp-for="Estado" class="form-select">
+                    <option>Todos</option>
+                    <option>Reembolsado</option>
+                    <option>Sin devolución</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Motivo</label>
+                <select asp-for="Motivo" class="form-select">
+                    <option>Todos</option>
+                    <option>Cambio de planes</option>
+                    <option>Emergencia</option>
+                    <option>Error en reserva</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Código / Pasajero</label>
+                <input asp-for="CodigoBusqueda" class="form-control" placeholder="RES-000123" />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn chaski-btn-primary w-100">
+                    <i class="fa-solid fa-magnifying-glass me-1"></i> Buscar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- KPIs -->
+<div class="row mb-4 g-3">
+    <div class="col-md-3">
+        <div class="card kpi-card kpi-danger">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">TOTAL CANCELACIONES</div>
+                    <div class="fs-4 fw-bold">@Model.TotalCancelaciones</div>
+                    <div class="text-muted small">En el período</div>
+                </div>
+                <i class="fa-solid fa-circle-xmark fa-2x text-danger"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">MONTO DEVUELTO</div>
+                    <div class="fs-4 fw-bold">S/ @Model.MontoDevuelto.ToString("N2")</div>
+                    <div class="text-muted small">Total reembolsado</div>
+                </div>
+                <i class="fa-solid fa-sack-dollar fa-2x text-primary"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">PENALIDADES APLICADAS</div>
+                    <div class="fs-4 fw-bold">S/ @Model.PenalidadesAplicadas.ToString("N2")</div>
+                    <div class="text-muted small">Total penalidades</div>
+                </div>
+                <i class="fa-solid fa-percent fa-2x text-success"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">CANCELACIONES HOY</div>
+                    <div class="fs-4 fw-bold">@Model.CancelacionesHoy</div>
+                    <div class="text-muted small">@DateTime.Today.ToString("dd/MM/yyyy")</div>
+                </div>
+                <i class="fa-solid fa-calendar-day fa-2x text-warning"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- LISTADO -->
+    <div class="col-md-9">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="fw-bold text-teal mb-3">LISTADO DE CANCELACIONES</h6>
+                <table class="table align-middle table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Código</th>
+                            <th>Fecha cancelación</th>
+                            <th>Pasajero</th>
+                            <th>Ruta</th>
+                            <th>Fecha viaje</th>
+                            <th>Monto total</th>
+                            <th>Devolución</th>
+                            <th>Penalidad</th>
+                            <th>Estado</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in Model.Cancelaciones)
+                        {
+                            var badgeClass = c.Estado == "Reembolsado" ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger";
+                            <tr>
+                                <td>@c.Codigo</td>
+                                <td>@c.FechaCancelacion.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@c.Pasajero<br /><span class="text-muted small">DNI: @c.Documento</span></td>
+                                <td>@c.Ruta</td>
+                                <td>@c.FechaViaje.ToString("dd/MM/yyyy")</td>
+                                <td>S/ @c.MontoTotal.ToString("0.00")</td>
+                                <td>S/ @c.Devolucion.ToString("0.00")</td>
+                                <td>S/ @c.Penalidad.ToString("0.00")</td>
+                                <td><span class="badge @badgeClass">@c.Estado</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="verDetalle('@c.Codigo')">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- DETALLE -->
+    <div class="col-md-3">
+        <div class="card mb-3">
+            <div class="card-body" id="detalleCancelacion">
+                <h6 class="fw-bold text-teal mb-3">DETALLE DE CANCELACIÓN</h6>
+                <p class="text-muted small text-center">Selecciona una cancelación para ver los detalles</p>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <h6 class="fw-bold mb-2"><i class="fa-solid fa-circle-info text-primary me-1"></i> Política de Cancelaciones</h6>
+                <ul class="small text-muted ps-3 mb-0">
+                    <li>24 horas antes del viaje: devolución del 100%.</li>
+                    <li>Entre 12 y 24 horas antes: devolución del 80% (20% penalidad).</li>
+                    <li>Menos de 12 horas antes: no aplica devolución.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function verDetalle(codigo) {
+            fetch('/Cancelaciones/Detalle?codigo=' + codigo)
+                .then(r => r.text())
+                .then(html => document.getElementById('detalleCancelacion').innerHTML = html);
+        }
+    </script>
+}

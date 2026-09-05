@@ -1,0 +1,16 @@
+﻿@{
+    ViewData["Title"] = "Reservas";
+}
+
+<nav class="text-muted small mb-2">INICIO &gt; <span class="text-dark fw-bold">RESERVAS</span></nav>
+<h4 class="fw-bold mb-4"><i class="fa-solid fa-bus me-2"></i>Gestión de Reservas</h4>
+
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="fa-solid fa-ticket fa-3x text-teal mb-3"></i>
+        <p class="text-muted">Registra una nueva reserva de viaje para un pasajero.</p>
+        <a asp-controller="Reservas" asp-action="Nueva" class="btn chaski-btn-primary px-4">
+            <i class="fa-solid fa-plus me-1"></i> Nueva Reserva
+        </a>
+    </div>
+</div>

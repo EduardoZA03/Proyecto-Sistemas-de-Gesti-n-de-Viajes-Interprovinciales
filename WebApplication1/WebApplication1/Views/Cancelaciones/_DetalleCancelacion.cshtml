@@ -1,0 +1,19 @@
+﻿@model CancelacionVM
+<h6 class="fw-bold text-teal mb-3">DETALLE DE CANCELACIÓN</h6>
+@if (Model == null)
+{
+    <p class="text-muted small text-center">No se encontró la cancelación.</p>
+}
+else
+{
+    <p class="mb-1"><strong>Código:</strong> @Model.Codigo</p>
+    <p class="mb-1"><strong>Reserva:</strong> @Model.CodigoReserva</p>
+    <p class="mb-1"><strong>Pasajero:</strong> @Model.Pasajero</p>
+    <p class="mb-1"><strong>Ruta:</strong> @Model.Ruta</p>
+    <p class="mb-1"><strong>Fecha viaje:</strong> @Model.FechaViaje.ToString("dd/MM/yyyy HH:mm")</p>
+    <p class="mb-1"><strong>Motivo:</strong> @Model.Motivo</p>
+    <p class="mb-1"><strong>Monto total:</strong> S/ @Model.MontoTotal.ToString("0.00")</p>
+    <p class="mb-1"><strong>Devolución:</strong> S/ @Model.Devolucion.ToString("0.00")</p>
+    <p class="mb-3"><strong>Penalidad:</strong> S/ @Model.Penalidad.ToString("0.00")</p>
+    <button class="btn chaski-btn-primary w-100"><i class="fa-solid fa-file-invoice me-1"></i> Ver comprobante</button>
+}
