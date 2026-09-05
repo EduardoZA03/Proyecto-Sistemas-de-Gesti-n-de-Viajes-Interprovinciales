@@ -5,9 +5,9 @@
         // Filtros
         public DateTime? FechaInicio { get; set; }
         public DateTime? FechaFin { get; set; }
-        public string TipoReporte { get; set; }
-        public string Ruta { get; set; }
-        public string Servicio { get; set; }
+        public string TipoReporte { get; set; } = string.Empty;
+        public string Ruta { get; set; } = string.Empty;
+        public string Servicio { get; set; } = string.Empty;
 
         // KPIs
         public decimal TotalIngresos { get; set; }

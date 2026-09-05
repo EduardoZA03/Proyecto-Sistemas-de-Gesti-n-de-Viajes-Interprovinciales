@@ -4,10 +4,10 @@
     {
         public int IdAsiento { get; set; }
         public int IdBus { get; set; }
-        public string NumeroAsiento { get; set; }
+        public string NumeroAsiento { get; set; } = string.Empty;
         public int Piso { get; set; }
-        public string Estado { get; set; }
+        public string Estado { get; set; } = string.Empty;
 
-        public Bus Bus { get; set; }
+        public Bus Bus { get; set; } = null!;
     }
 }

@@ -2,14 +2,14 @@
 {
     public class VentaVM
     {
-        public string Codigo { get; set; }
+        public string Codigo { get; set; } = string.Empty;
         public DateTime Fecha { get; set; }
-        public string Pasajero { get; set; }
-        public string Documento { get; set; }
-        public string Ruta { get; set; }
-        public string Asientos { get; set; }
+        public string Pasajero { get; set; } = string.Empty;
+        public string Documento { get; set; } = string.Empty;
+        public string Ruta { get; set; } = string.Empty;
+        public string Asientos { get; set; } = string.Empty;
         public decimal MontoTotal { get; set; }
-        public string MetodoPago { get; set; }
-        public string Estado { get; set; }
+        public string MetodoPago { get; set; } = string.Empty;
+        public string Estado { get; set; } = string.Empty;
     }
 }
