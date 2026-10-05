@@ -34,7 +34,7 @@
                         <label class="form-label">Ruta</label>
                         <select asp-for="Ruta" class="form-select">
                             <option>Todas las rutas</option>
-                            @foreach (var r in Model.RutasLabels)
+                            @foreach (var r in Model.RutasDisponibles)
                             {
                                 <option>@r</option>
                             }
@@ -44,7 +44,7 @@
                         <label class="form-label">Servicio</label>
                         <select asp-for="Servicio" class="form-select">
                             <option>Todos los servicios</option>
-                            @foreach (var s in Model.ServiciosLabels)
+                            @foreach (var s in Model.ServiciosDisponibles)
                             {
                                 <option>@s</option>
                             }
