@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebApplication1.Data;
+using WebApplication1.Data.Exportacion;
 using WebApplication1.Models;
 using WebApplication1.Models.ViewModels;
 
@@ -9,8 +10,13 @@ namespace WebApplication1.Controllers
     public class CancelacionesController : Controller
     {
         private readonly ChaskiRutaContext _db;
+        private readonly IWebHostEnvironment _env;
 
-        public CancelacionesController(ChaskiRutaContext db) => _db = db;
+        public CancelacionesController(ChaskiRutaContext db, IWebHostEnvironment env)
+        {
+            _db = db;
+            _env = env;
+        }
 
         public async Task<IActionResult> Index()
         {
@@ -36,6 +42,131 @@ namespace WebApplication1.Controllers
                 ? null
                 : (await ProyectarAsync(_db.Cancelaciones.AsNoTracking().Where(x => x.IdCancelacion == id))).FirstOrDefault();
             return PartialView("_DetalleCancelacion", c);
+        }
+
+        // ---------- EXPORTAR (respetan los filtros que se están viendo) ----------
+
+        [HttpGet]
+        public async Task<IActionResult> ExportarExcel(CancelacionesIndexVM filtros)
+        {
+            var libro = await ConstruirLibroAsync(filtros);
+            return File(ExcelExportador.Generar(libro), ExportacionUtil.TipoXlsx, libro.NombreArchivoCompleto("xlsx"));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ExportarPdf(CancelacionesIndexVM filtros)
+        {
+            var libro = await ConstruirLibroAsync(filtros);
+            return File(PdfExportador.GenerarReporte(libro, ExportacionUtil.Logo(_env)), ExportacionUtil.TipoPdf, libro.NombreArchivoCompleto("pdf"));
+        }
+
+        private async Task<LibroReporte> ConstruirLibroAsync(CancelacionesIndexVM entrada)
+        {
+            var f = await ConstruirAsync(entrada);
+
+            var filtros = new List<(string, string)>();
+            if (ExportacionUtil.Periodo(f.FechaInicio, f.FechaFin) is { } periodo) filtros.Add(("Período", periodo));
+            ExportacionUtil.AgregarFiltro(filtros, "Estado", f.Estado);
+            ExportacionUtil.AgregarFiltro(filtros, "Motivo", f.Motivo);
+            ExportacionUtil.AgregarFiltro(filtros, "Código", f.CodigoBusqueda);
+            ExportacionUtil.AgregarFiltro(filtros, "Pasajero", f.Pasajero);
+
+            return new LibroReporte
+            {
+                Titulo = "Reporte de cancelaciones",
+                Subtitulo = $"{f.Cancelaciones.Count} registro(s)",
+                NombreArchivo = "Cancelaciones",
+                GeneradoPor = ExportacionUtil.NombreUsuario(User),
+                Filtros = filtros,
+                Resumen = new()
+                {
+                    ("Total cancelaciones", f.TotalCancelaciones.ToString("N0", FormatoEs.Cultura)),
+                    ("Monto devuelto", FormatoEs.Moneda(f.MontoDevuelto)),
+                    ("Penalidades aplicadas", FormatoEs.Moneda(f.PenalidadesAplicadas)),
+                    ("Cancelaciones hoy", f.CancelacionesHoy.ToString("N0", FormatoEs.Cultura))
+                },
+                Secciones = new()
+                {
+                    new SeccionTabla
+                    {
+                        Titulo = "Cancelaciones",
+                        Columnas = new()
+                        {
+                            new("Código", TipoColumna.Texto, 1.25f),
+                            new("Cancelada el", TipoColumna.FechaHora, 1.7f),
+                            new("Reserva", TipoColumna.Texto, 1.4f),
+                            new("Pasajero", TipoColumna.Texto, 1.8f),
+                            new("Ruta", TipoColumna.Texto, 2.1f),
+                            new("Viaje", TipoColumna.Fecha, 1.35f),
+                            new("Motivo", TipoColumna.Texto, 1.5f),
+                            new("Monto total", TipoColumna.Moneda, 1.2f),
+                            new("Devolución", TipoColumna.Moneda, 1.2f),
+                            new("Penalidad", TipoColumna.Moneda, 1.2f),
+                            new("Estado", TipoColumna.Texto, 1.5f)
+                        },
+                        Filas = f.Cancelaciones.Select(c => new object?[]
+                        {
+                            c.Codigo, c.FechaCancelacion, c.CodigoReserva, c.Pasajero, c.Ruta, c.FechaViaje,
+                            c.Motivo, c.MontoTotal, c.Devolucion, c.Penalidad, c.Estado
+                        }).ToList(),
+                        Totales = f.Cancelaciones.Count == 0 ? null : new object?[]
+                        {
+                            "TOTAL", null, null, null, null, null, null,
+                            f.Cancelaciones.Sum(c => c.MontoTotal), f.MontoDevuelto, f.PenalidadesAplicadas, null
+                        }
+                    }
+                }
+            };
+        }
+
+        // ---------- CONSTANCIA ----------
+
+        [HttpGet]
+        public async Task<IActionResult> Comprobante(string codigo)
+        {
+            var id = Formato.IdDeCodigo(codigo);
+            if (id is null) return NotFound();
+
+            var c = await _db.Cancelaciones.AsNoTracking().Where(x => x.IdCancelacion == id).Select(x => new
+            {
+                x.IdCancelacion,
+                x.FechaCancelacion,
+                x.Motivo,
+                x.MontoReembolso,
+                x.Estado,
+                CodigoReserva = x.Reserva.CodigoReserva,
+                Total = x.Reserva.Total,
+                Pagado = x.Reserva.Pagos.Where(p => p.Estado == "Pagado").Sum(p => p.Monto),
+                Pasajero = x.Reserva.Pasajeros.OrderBy(a => a.IdPasajero)
+                            .Select(a => new { a.Nombres, a.Apellidos, a.TipoDocumento, a.NroDocumento }).FirstOrDefault(),
+                Origen = x.Reserva.Viaje.Ruta.Origen.NombreCiudad,
+                Destino = x.Reserva.Viaje.Ruta.Destino.NombreCiudad,
+                x.Reserva.Viaje.FechaSalida,
+                x.Reserva.Viaje.HoraSalida,
+                Servicio = x.Reserva.Viaje.Bus.Servicio,
+                Empresa = new
+                {
+                    x.Reserva.Viaje.Bus.Empresa.RazonSocial,
+                    x.Reserva.Viaje.Bus.Empresa.Ruc,
+                    x.Reserva.Viaje.Bus.Empresa.Direccion,
+                    x.Reserva.Viaje.Bus.Empresa.Telefono,
+                    x.Reserva.Viaje.Bus.Empresa.Correo
+                }
+            }).FirstOrDefaultAsync();
+
+            if (c is null) return NotFound();
+
+            var porcentaje = c.Pagado > 0 ? (int)Math.Round(c.MontoReembolso / c.Pagado * 100m) : 0;
+            var datos = new DatosComprobanteCancelacion(
+                Formato.CodigoCancelacion(c.IdCancelacion), c.FechaCancelacion, c.Estado, c.Motivo,
+                c.CodigoReserva,
+                c.Pasajero is null ? "(sin pasajero)" : $"{c.Pasajero.Nombres} {c.Pasajero.Apellidos}",
+                c.Pasajero?.TipoDocumento ?? "Documento", c.Pasajero?.NroDocumento ?? "—",
+                $"{c.Origen} - {c.Destino}", c.FechaSalida.Add(c.HoraSalida), c.Servicio,
+                c.Total, c.Pagado, c.MontoReembolso, c.Pagado - c.MontoReembolso, porcentaje,
+                new DatosEmpresa(c.Empresa.RazonSocial, c.Empresa.Ruc, c.Empresa.Direccion, c.Empresa.Telefono, c.Empresa.Correo));
+
+            return File(ComprobantesPdf.Cancelacion(datos, ExportacionUtil.Logo(_env)), ExportacionUtil.TipoPdf);
         }
 
         private async Task<CancelacionesIndexVM> ConstruirAsync(CancelacionesIndexVM f)

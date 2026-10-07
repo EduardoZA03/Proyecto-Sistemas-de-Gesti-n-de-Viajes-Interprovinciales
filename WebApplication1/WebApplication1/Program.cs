@@ -7,6 +7,9 @@ using WebApplication1.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// QuestPDF (genera los PDF): la licencia Community es gratuita para estudiantes, proyectos pequeños y de código abierto
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 // Add services to the container.
 builder.Services.AddControllersWithViews(options =>
 {

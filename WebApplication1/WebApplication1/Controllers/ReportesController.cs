@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebApplication1.Data;
+using WebApplication1.Data.Exportacion;
 using WebApplication1.Models.ViewModels;
 
 namespace WebApplication1.Controllers
@@ -10,8 +11,87 @@ namespace WebApplication1.Controllers
     public class ReportesController : Controller
     {
         private readonly ChaskiRutaContext _db;
+        private readonly IWebHostEnvironment _env;
 
-        public ReportesController(ChaskiRutaContext db) => _db = db;
+        public ReportesController(ChaskiRutaContext db, IWebHostEnvironment env)
+        {
+            _db = db;
+            _env = env;
+        }
+
+        // ---------- EXPORTAR (respetan los filtros que se están viendo) ----------
+
+        [HttpGet]
+        public async Task<IActionResult> ExportarExcel(ReportesIndexVM filtros)
+        {
+            var libro = await ConstruirLibroAsync(filtros);
+            return File(ExcelExportador.Generar(libro), ExportacionUtil.TipoXlsx, libro.NombreArchivoCompleto("xlsx"));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ExportarPdf(ReportesIndexVM filtros)
+        {
+            var libro = await ConstruirLibroAsync(filtros);
+            return File(PdfExportador.GenerarReporte(libro, ExportacionUtil.Logo(_env)), ExportacionUtil.TipoPdf, libro.NombreArchivoCompleto("pdf"));
+        }
+
+        private async Task<LibroReporte> ConstruirLibroAsync(ReportesIndexVM entrada)
+        {
+            var r = await ConstruirAsync(entrada);
+
+            var filtros = new List<(string, string)>();
+            if (ExportacionUtil.Periodo(r.FechaInicio, r.FechaFin) is { } periodo) filtros.Add(("Período", periodo));
+            ExportacionUtil.AgregarFiltro(filtros, "Ruta", r.Ruta, "Todas las rutas");
+            ExportacionUtil.AgregarFiltro(filtros, "Servicio", r.Servicio, "Todos los servicios");
+
+            // Ingresos y ocupación por día
+            var porDia = new List<object?[]>();
+            for (var i = 0; i < r.FechasLabels.Count; i++)
+                porDia.Add(new object?[] { r.FechasLabels[i], r.IngresosPorDia[i], r.OcupacionPorDia[i] });
+
+            var porRuta = r.RutasLabels.Select((ruta, i) => new object?[] { ruta, r.PasajerosPorRuta[i] }).ToList();
+            var porServicio = r.ServiciosLabels.Select((s, i) => new object?[] { s, r.IngresosPorServicio[i] }).ToList();
+
+            return new LibroReporte
+            {
+                Titulo = "Reporte de gestión",
+                Subtitulo = "Ingresos, pasajeros y ocupación",
+                NombreArchivo = "Reporte_gestion",
+                GeneradoPor = ExportacionUtil.NombreUsuario(User),
+                Filtros = filtros,
+                Resumen = new()
+                {
+                    ("Total ingresos", FormatoEs.Moneda(r.TotalIngresos)),
+                    ("Pasajeros", r.TotalPasajeros.ToString("N0", FormatoEs.Cultura)),
+                    ("Ocupación promedio", r.TasaOcupacionProm.ToString("0.0", FormatoEs.Cultura) + " %"),
+                    ("Viajes", r.TotalViajes.ToString("N0", FormatoEs.Cultura))
+                },
+                Secciones = new()
+                {
+                    new SeccionTabla
+                    {
+                        Titulo = "Ingresos y ocupación por día",
+                        Columnas = new() { new("Día", TipoColumna.Texto, 1f), new("Ingresos", TipoColumna.BarraMoneda, 3f), new("Ocupación", TipoColumna.Porcentaje, 1.2f) },
+                        Filas = porDia,
+                        Totales = porDia.Count == 0 ? null : new object?[] { "TOTAL", r.TotalIngresos, r.TasaOcupacionProm }
+                    },
+                    new SeccionTabla
+                    {
+                        Titulo = "Pasajeros por ruta",
+                        Columnas = new() { new("Ruta", TipoColumna.Texto, 2f), new("Pasajeros", TipoColumna.Barra, 3f) },
+                        Filas = porRuta,
+                        Totales = porRuta.Count == 0 ? null : new object?[] { "TOTAL", r.TotalPasajeros }
+                    },
+                    new SeccionTabla
+                    {
+                        Titulo = "Ingresos por tipo de servicio",
+                        Columnas = new() { new("Servicio", TipoColumna.Texto, 2f), new("Ingresos", TipoColumna.BarraMoneda, 3f) },
+                        Filas = porServicio,
+                        Totales = porServicio.Count == 0 ? null : new object?[] { "TOTAL", r.TotalIngresos }
+                    }
+                }
+            };
+        }
 
         public async Task<IActionResult> Index()
         {

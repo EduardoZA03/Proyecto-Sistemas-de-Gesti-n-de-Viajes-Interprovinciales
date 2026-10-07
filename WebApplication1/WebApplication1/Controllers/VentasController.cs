@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebApplication1.Data;
+using WebApplication1.Data.Exportacion;
 using WebApplication1.Models;
 using WebApplication1.Models.ViewModels;
 
@@ -9,8 +10,13 @@ namespace WebApplication1.Controllers
     public class VentasController : Controller
     {
         private readonly ChaskiRutaContext _db;
+        private readonly IWebHostEnvironment _env;
 
-        public VentasController(ChaskiRutaContext db) => _db = db;
+        public VentasController(ChaskiRutaContext db, IWebHostEnvironment env)
+        {
+            _db = db;
+            _env = env;
+        }
 
         public async Task<IActionResult> Index()
         {
@@ -36,6 +42,132 @@ namespace WebApplication1.Controllers
                 ? null
                 : (await ProyectarAsync(PagosValidos().Where(p => p.IdPago == id))).FirstOrDefault();
             return PartialView("_DetalleVenta", venta);
+        }
+
+        // ---------- EXPORTAR (respetan los filtros que se están viendo) ----------
+
+        [HttpGet]
+        public async Task<IActionResult> ExportarExcel(VentasIndexVM filtros)
+        {
+            var libro = await ConstruirLibroAsync(filtros);
+            return File(ExcelExportador.Generar(libro), ExportacionUtil.TipoXlsx, libro.NombreArchivoCompleto("xlsx"));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ExportarPdf(VentasIndexVM filtros)
+        {
+            var libro = await ConstruirLibroAsync(filtros);
+            return File(PdfExportador.GenerarReporte(libro, ExportacionUtil.Logo(_env)), ExportacionUtil.TipoPdf, libro.NombreArchivoCompleto("pdf"));
+        }
+
+        private async Task<LibroReporte> ConstruirLibroAsync(VentasIndexVM entrada)
+        {
+            var f = await ConstruirAsync(entrada);
+
+            var filtros = new List<(string, string)>();
+            if (ExportacionUtil.Periodo(f.FechaInicio, f.FechaFin) is { } periodo) filtros.Add(("Período", periodo));
+            ExportacionUtil.AgregarFiltro(filtros, "Estado", f.Estado);
+            ExportacionUtil.AgregarFiltro(filtros, "Método de pago", f.MetodoPago);
+            ExportacionUtil.AgregarFiltro(filtros, "Pasajero", f.Pasajero);
+            ExportacionUtil.AgregarFiltro(filtros, "Código", f.CodigoVenta);
+
+            return new LibroReporte
+            {
+                Titulo = "Reporte de ventas",
+                Subtitulo = $"{f.Ventas.Count} registro(s)",
+                NombreArchivo = "Ventas",
+                GeneradoPor = ExportacionUtil.NombreUsuario(User),
+                Filtros = filtros,
+                Resumen = new()
+                {
+                    ("Total ventas", FormatoEs.Moneda(f.TotalVentas)),
+                    ("Transacciones", f.TotalTransacciones.ToString("N0", FormatoEs.Cultura)),
+                    ("Venta promedio", FormatoEs.Moneda(f.VentaPromedio)),
+                    ("Ventas hoy", FormatoEs.Moneda(f.VentasHoy))
+                },
+                Secciones = new()
+                {
+                    new SeccionTabla
+                    {
+                        Titulo = "Ventas",
+                        Columnas = new()
+                        {
+                            new("Código", TipoColumna.Texto, 1.15f),
+                            new("Fecha", TipoColumna.FechaHora, 1.4f),
+                            new("Pasajero", TipoColumna.Texto, 2f),
+                            new("Documento", TipoColumna.Texto, 1.1f),
+                            new("Ruta", TipoColumna.Texto, 2.5f),
+                            new("Asientos", TipoColumna.Texto, 1f),
+                            new("Monto", TipoColumna.Moneda, 1.1f),
+                            new("Método de pago", TipoColumna.Texto, 1.2f),
+                            new("Estado", TipoColumna.Texto, 1f)
+                        },
+                        Filas = f.Ventas.Select(v => new object?[]
+                        {
+                            v.Codigo, v.Fecha, v.Pasajero, v.Documento, v.Ruta, v.Asientos, v.MontoTotal, v.MetodoPago, v.Estado
+                        }).ToList(),
+                        // Solo se suman las ventas cobradas (las pendientes aún no son ingreso)
+                        Totales = f.Ventas.Count == 0 ? null : new object?[]
+                        {
+                            null, null, "TOTAL COBRADO", null, null, null, f.TotalVentas, null, null
+                        }
+                    }
+                }
+            };
+        }
+
+        // ---------- COMPROBANTE ----------
+
+        [HttpGet]
+        public async Task<IActionResult> Comprobante(string codigo)
+        {
+            var id = Formato.IdDeCodigo(codigo);
+            if (id is null) return NotFound();
+
+            var p = await PagosValidos().Where(x => x.IdPago == id).Select(x => new
+            {
+                x.IdPago,
+                x.FechaPago,
+                x.Monto,
+                x.MetodoPago,
+                x.Referencia,
+                x.Estado,
+                CodigoReserva = x.Reserva.CodigoReserva,
+                Pasajero = x.Reserva.Pasajeros.OrderBy(a => a.IdPasajero)
+                            .Select(a => new { a.Nombres, a.Apellidos, a.TipoDocumento, a.NroDocumento }).FirstOrDefault(),
+                Origen = x.Reserva.Viaje.Ruta.Origen.NombreCiudad,
+                Destino = x.Reserva.Viaje.Ruta.Destino.NombreCiudad,
+                x.Reserva.Viaje.FechaSalida,
+                x.Reserva.Viaje.HoraSalida,
+                Servicio = x.Reserva.Viaje.Bus.Servicio,
+                Placa = x.Reserva.Viaje.Bus.Placa,
+                Asientos = x.Reserva.ReservaAsientos
+                            .Select(ra => new { ra.Asiento.NumeroAsiento, ra.Tarifa.TipoTarifa, ra.Precio }).ToList(),
+                Atendido = x.Reserva.Usuario.Nombres + " " + x.Reserva.Usuario.Apellidos,
+                Empresa = new
+                {
+                    x.Reserva.Viaje.Bus.Empresa.RazonSocial,
+                    x.Reserva.Viaje.Bus.Empresa.Ruc,
+                    x.Reserva.Viaje.Bus.Empresa.Direccion,
+                    x.Reserva.Viaje.Bus.Empresa.Telefono,
+                    x.Reserva.Viaje.Bus.Empresa.Correo
+                }
+            }).FirstOrDefaultAsync();
+
+            if (p is null) return NotFound();
+
+            var datos = new DatosComprobanteVenta(
+                Formato.CodigoVenta(p.IdPago), p.FechaPago, p.Estado,
+                p.CodigoReserva,
+                p.Pasajero is null ? "(sin pasajero)" : $"{p.Pasajero.Nombres} {p.Pasajero.Apellidos}",
+                p.Pasajero?.TipoDocumento ?? "Documento", p.Pasajero?.NroDocumento ?? "—",
+                $"{p.Origen} - {p.Destino}", p.FechaSalida.Add(p.HoraSalida), p.Servicio, p.Placa,
+                p.Asientos.OrderBy(a => a.NumeroAsiento).Select(a => (a.NumeroAsiento, a.TipoTarifa, a.Precio)).ToList(),
+                p.Monto, p.MetodoPago, p.Referencia, p.Atendido,
+                new DatosEmpresa(p.Empresa.RazonSocial, p.Empresa.Ruc, p.Empresa.Direccion, p.Empresa.Telefono, p.Empresa.Correo));
+
+            // Sin nombre de archivo: el navegador lo muestra en pantalla para verlo o imprimirlo
+            return File(ComprobantesPdf.Venta(datos, ExportacionUtil.Logo(_env)), ExportacionUtil.TipoPdf);
         }
 
         // Una venta es un pago de una reserva que no fue cancelada

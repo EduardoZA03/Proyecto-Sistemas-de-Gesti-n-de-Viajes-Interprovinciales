@@ -1,6 +1,15 @@
 ﻿@model ReportesIndexVM
 @{
     ViewData["Title"] = "Reportes";
+
+    // Los mismos filtros que se están viendo viajan a la descarga
+    var consulta = new
+    {
+        FechaInicio = Model.FechaInicio?.ToString("yyyy-MM-dd"),
+        FechaFin = Model.FechaFin?.ToString("yyyy-MM-dd"),
+        Ruta = Model.Ruta,
+        Servicio = Model.Servicio
+    };
 }
 
 <nav class="text-muted small mb-2">INICIO &gt; <span class="text-dark fw-bold">REPORTES</span></nav>
@@ -150,10 +159,18 @@
         <div class="card">
             <div class="card-body">
                 <h6 class="fw-bold text-teal mb-3">ACCIONES RÁPIDAS</h6>
-                <button class="btn btn-outline-secondary w-100 mb-2 text-start"><i class="fa-solid fa-file-pdf me-2"></i>Exportar a PDF</button>
-                <button class="btn btn-outline-secondary w-100 mb-2 text-start"><i class="fa-solid fa-file-excel me-2"></i>Exportar a Excel</button>
-                <button class="btn btn-outline-secondary w-100 mb-2 text-start"><i class="fa-solid fa-print me-2"></i>Imprimir reporte</button>
-                <button class="btn btn-outline-secondary w-100 text-start"><i class="fa-solid fa-calendar-plus me-2"></i>Programar reporte</button>
+                <a class="btn btn-outline-danger w-100 mb-2 text-start" href="@Url.Action("ExportarPdf", consulta)">
+                    <i class="fa-solid fa-file-pdf me-2"></i>Exportar a PDF
+                </a>
+                <a class="btn btn-outline-success w-100 mb-2 text-start" href="@Url.Action("ExportarExcel", consulta)">
+                    <i class="fa-solid fa-file-excel me-2"></i>Exportar a Excel
+                </a>
+                <button type="button" class="btn btn-outline-secondary w-100 mb-2 text-start" onclick="window.print()">
+                    <i class="fa-solid fa-print me-2"></i>Imprimir pantalla
+                </button>
+                <button type="button" class="btn btn-outline-secondary w-100 text-start" disabled title="Próximamente">
+                    <i class="fa-solid fa-calendar-plus me-2"></i>Programar reporte <span class="badge bg-secondary-subtle text-secondary ms-1">próximamente</span>
+                </button>
             </div>
         </div>
     </div>
