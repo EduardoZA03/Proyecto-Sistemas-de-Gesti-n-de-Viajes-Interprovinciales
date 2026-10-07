@@ -13,6 +13,7 @@
     public class ConfiguracionVM
     {
         // Mi perfil
+        public string NombreUsuario { get; set; } = string.Empty; // solo lectura
         public string Nombres { get; set; } = string.Empty;
         public string Apellidos { get; set; } = string.Empty;
         public string Correo { get; set; } = string.Empty;

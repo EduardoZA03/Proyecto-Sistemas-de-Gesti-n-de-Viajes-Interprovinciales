@@ -77,9 +77,9 @@
                             <td>@r.Codigo<br /><span class="text-muted small">@r.FechaReserva.ToString("dd/MM/yyyy HH:mm")</span></td>
                             <td>@r.Pasajero<br /><span class="text-muted small">DNI: @r.Documento</span></td>
                             <td>@r.Ruta</td>
-                            <td>@r.FechaViaje.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td class="text-nowrap">@r.FechaViaje.ToString("dd/MM/yyyy")<br /><span class="text-muted small">@r.FechaViaje.ToString("HH:mm")</span></td>
                             <td>@r.Asientos</td>
-                            <td>S/ @r.Total.ToString("0.00")</td>
+                            <td class="text-nowrap">S/ @r.Total.ToString("0.00")</td>
                             <td><span class="badge @badge">@r.Estado</span></td>
                             <td class="text-end text-nowrap">
                                 @if (r.PuedeCobrar)

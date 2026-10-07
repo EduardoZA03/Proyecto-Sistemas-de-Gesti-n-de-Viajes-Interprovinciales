@@ -106,10 +106,18 @@
 
 <div class="row">
     <!-- LISTADO -->
-    <div class="col-md-9">
+    <div class="col-12">
         <div class="card">
             <div class="card-body">
-                <h6 class="fw-bold text-teal mb-3">LISTADO DE VENTAS</h6>
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <h6 class="fw-bold text-teal mb-0">LISTADO DE VENTAS</h6>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-file-pdf me-1"></i> Reporte PDF</button>
+                        <button class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-file-excel me-1"></i> Exportar a Excel</button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()"><i class="fa-solid fa-rotate me-1"></i> Actualizar</button>
+                    </div>
+                </div>
+<div class="table-responsive">
                 <table class="table align-middle table-hover">
                     <thead class="table-light">
                         <tr>
@@ -128,13 +136,13 @@
                         @foreach (var v in Model.Ventas)
                         {
                             <tr>
-                                <td>@v.Codigo</td>
-                                <td>@v.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="text-nowrap">@v.Codigo</td>
+                                <td class="text-nowrap">@v.Fecha.ToString("dd/MM/yyyy")<br /><span class="text-muted small">@v.Fecha.ToString("HH:mm")</span></td>
                                 <td>@v.Pasajero<br /><span class="text-muted small">DNI: @v.Documento</span></td>
                                 <td>@v.Ruta</td>
                                 <td>@v.Asientos</td>
-                                <td>S/ @v.MontoTotal.ToString("0.00")</td>
-                                <td>@v.MetodoPago</td>
+                                <td class="text-nowrap">S/ @v.MontoTotal.ToString("0.00")</td>
+                                <td class="text-nowrap">@v.MetodoPago</td>
                                 <td><span class="badge bg-success-subtle text-success">@v.Estado</span></td>
                                 <td>
                                     <button class="btn btn-sm btn-outline-secondary"
@@ -146,35 +154,30 @@
                         }
                     </tbody>
                 </table>
+</div>
             </div>
         </div>
     </div>
 
-    <!-- DETALLE / ACCIONES -->
-    <div class="col-md-3">
-        <div class="card mb-3">
-            <div class="card-body" id="detalleVenta">
-                <h6 class="fw-bold text-teal mb-3">DETALLE DE VENTA</h6>
-                <p class="text-muted small text-center">Selecciona una venta para ver los detalles</p>
-            </div>
+    <!-- DETALLE: panel deslizable -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="panelDetalle" aria-labelledby="panelDetalleTitulo">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="panelDetalleTitulo"><i class="fa-solid fa-receipt me-2 text-teal"></i>Detalle</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
         </div>
-        <div class="card">
-            <div class="card-body">
-                <h6 class="fw-bold text-teal mb-3">ACCIONES RÁPIDAS</h6>
-                <button class="btn btn-outline-secondary w-100 mb-2 text-start"><i class="fa-solid fa-file-pdf me-2"></i>Generar reporte PDF</button>
-                <button class="btn btn-outline-secondary w-100 mb-2 text-start"><i class="fa-solid fa-file-excel me-2"></i>Exportar a Excel</button>
-                <button class="btn btn-outline-secondary w-100 text-start" onclick="location.reload()"><i class="fa-solid fa-rotate me-2"></i>Actualizar</button>
-            </div>
-        </div>
+        <div class="offcanvas-body" id="detalleVenta"></div>
     </div>
 </div>
 
 @section Scripts {
     <script>
         function verDetalle(codigo) {
-            fetch('/Ventas/Detalle?codigo=' + codigo)
+            const cuerpo = document.getElementById('detalleVenta');
+            cuerpo.innerHTML = '<p class="text-muted text-center">Cargando…</p>';
+            bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('panelDetalle')).show();
+            fetch('/Ventas/Detalle?codigo=' + encodeURIComponent(codigo))
                 .then(r => r.text())
-                .then(html => document.getElementById('detalleVenta').innerHTML = html);
+                .then(html => cuerpo.innerHTML = html);
         }
     </script>
 }

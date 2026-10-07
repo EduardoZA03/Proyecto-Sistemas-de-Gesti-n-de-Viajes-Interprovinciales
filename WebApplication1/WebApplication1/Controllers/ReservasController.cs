@@ -220,7 +220,7 @@ namespace WebApplication1.Controllers
             if (model.Edad is not { } edad || edad < 0 || edad > 120)
                 return await Fallo("Ingresa la edad del pasajero.");
 
-            var usuario = await _db.ObtenerUsuarioActualAsync();
+            var usuario = await _db.ObtenerUsuarioActualAsync(User);
             if (usuario is null)
                 return await Fallo("No hay un usuario vendedor activo para registrar la reserva.");
 

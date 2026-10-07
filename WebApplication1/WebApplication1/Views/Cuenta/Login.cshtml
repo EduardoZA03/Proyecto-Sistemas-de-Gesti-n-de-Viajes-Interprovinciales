@@ -1,0 +1,49 @@
+@model LoginVM
+@{
+    ViewData["Title"] = "Iniciar sesión";
+    Layout = "_LayoutAuth";
+}
+
+<div class="card chaski-auth-card shadow">
+    <div class="chaski-auth-head text-center text-white py-4 px-3">
+        <img src="~/images/logo-chaski.png" alt="Chaski-Ruta" style="height:48px" class="mb-2" />
+        <div class="fw-bold">SISTEMA INTEGRAL DE GESTIÓN</div>
+        <div class="small">Y CONTROL DE VIAJES INTERPROVINCIALES</div>
+    </div>
+    <div class="card-body p-4">
+        <h5 class="fw-bold mb-3 text-center">Iniciar sesión</h5>
+
+        @if (!string.IsNullOrEmpty(Model.Alerta))
+        {
+            <div class="alert alert-warning d-flex align-items-start" role="alert">
+                <i class="fa-solid fa-triangle-exclamation me-2 mt-1"></i>
+                <div>@Model.Alerta</div>
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(Model.Error))
+        {
+            <div class="alert alert-danger" role="alert">@Model.Error</div>
+        }
+
+        <form asp-action="Login" method="post" autocomplete="off">
+            <input type="hidden" asp-for="ReturnUrl" />
+            <div class="mb-3">
+                <label asp-for="NombreUsuario" class="form-label">ID de usuario</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+                    <input asp-for="NombreUsuario" class="form-control" autofocus maxlength="30" autocapitalize="none" />
+                </div>
+            </div>
+            <div class="mb-4">
+                <label asp-for="Contrasena" class="form-label">Contraseña</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                    <input asp-for="Contrasena" type="password" class="form-control" maxlength="100" autocomplete="current-password" />
+                </div>
+            </div>
+            <button type="submit" class="btn chaski-btn-primary w-100">
+                <i class="fa-solid fa-right-to-bracket me-1"></i> Entrar
+            </button>
+        </form>
+    </div>
+</div>

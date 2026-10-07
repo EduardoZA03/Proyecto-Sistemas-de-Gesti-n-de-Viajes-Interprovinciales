@@ -32,7 +32,13 @@ CREATE TABLE dbo.Usuario (
     Telefono      NVARCHAR(15)  NOT NULL DEFAULT N'',
     IdRol         INT NOT NULL CONSTRAINT FK_Usuario_Rol REFERENCES dbo.Rol(IdRol),
     Estado        NVARCHAR(20)  NOT NULL DEFAULT N'Activo',
-    FechaCreacion DATETIME2     NOT NULL DEFAULT SYSDATETIME()
+    FechaCreacion DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
+    -- Inicio de sesión: se entra con NombreUsuario (ID) y contraseña
+    NombreUsuario    NVARCHAR(30)  NOT NULL CONSTRAINT UQ_Usuario_NombreUsuario UNIQUE,
+    ContrasenaHash   NVARCHAR(200) NULL,       -- la app la rellena; nunca se guarda en texto
+    IntentosFallidos INT NOT NULL CONSTRAINT DF_Usuario_Intentos DEFAULT 0,
+    BloqueadoHasta   DATETIME2 NULL,
+    UltimoAcceso     DATETIME2 NULL
 );
 
 IF OBJECT_ID(N'dbo.Ciudad') IS NULL
@@ -190,6 +196,27 @@ BEGIN
 END
 GO
 
+/* Bases creadas con una versión anterior: agrega los campos de inicio de sesión */
+IF COL_LENGTH(N'dbo.Usuario', N'NombreUsuario') IS NULL
+BEGIN
+    ALTER TABLE dbo.Usuario ADD
+        NombreUsuario    NVARCHAR(30)  NULL,
+        ContrasenaHash   NVARCHAR(200) NULL,
+        IntentosFallidos INT NOT NULL CONSTRAINT DF_Usuario_Intentos DEFAULT 0,
+        BloqueadoHasta   DATETIME2 NULL,
+        UltimoAcceso     DATETIME2 NULL;
+    EXEC(N'
+        UPDATE dbo.Usuario SET NombreUsuario = CASE Correo
+            WHEN N''admin@chaskiruta.pe''    THEN N''admin''
+            WHEN N''vendedor@chaskiruta.pe'' THEN N''vendedor''
+            WHEN N''lucia@example.com''      THEN N''cliente'' END
+        WHERE Correo IN (N''admin@chaskiruta.pe'', N''vendedor@chaskiruta.pe'', N''lucia@example.com'');
+        UPDATE dbo.Usuario SET NombreUsuario = N''usuario'' + CAST(IdUsuario AS NVARCHAR(10)) WHERE NombreUsuario IS NULL;
+        ALTER TABLE dbo.Usuario ALTER COLUMN NombreUsuario NVARCHAR(30) NOT NULL;
+        ALTER TABLE dbo.Usuario ADD CONSTRAINT UQ_Usuario_NombreUsuario UNIQUE (NombreUsuario);');
+END
+GO
+
 /* ------------------------------ ÍNDICES ------------------------------ */
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Viaje_Busqueda')
     CREATE INDEX IX_Viaje_Busqueda ON dbo.Viaje (IdOrigen, IdDestino, FechaSalida);
@@ -303,13 +330,13 @@ CROSS JOIN (VALUES
 ) AS t(Tipo, Factor);
 
 IF NOT EXISTS (SELECT 1 FROM dbo.Usuario)
-INSERT dbo.Usuario (Nombres, Apellidos, Dni, Correo, Telefono, IdRol)
-SELECT u.Nombres, u.Apellidos, u.Dni, u.Correo, u.Telefono, r.IdRol
+INSERT dbo.Usuario (Nombres, Apellidos, Dni, Correo, Telefono, IdRol, NombreUsuario)
+SELECT u.Nombres, u.Apellidos, u.Dni, u.Correo, u.Telefono, r.IdRol, u.NombreUsuario
 FROM (VALUES
-  (N'Admin',   N'Chaski',  N'10000001', N'admin@chaskiruta.pe',    N'999000001', N'Administrador'),
-  (N'Carlos',  N'Ramos',   N'10000002', N'vendedor@chaskiruta.pe', N'999000002', N'Vendedor'),
-  (N'Lucía',   N'Torres',  N'10000003', N'lucia@example.com',      N'999000003', N'Cliente')
-) AS u(Nombres, Apellidos, Dni, Correo, Telefono, Rol)
+  (N'Admin',   N'Chaski',  N'10000001', N'admin@chaskiruta.pe',    N'999000001', N'Administrador', N'admin'),
+  (N'Carlos',  N'Ramos',   N'10000002', N'vendedor@chaskiruta.pe', N'999000002', N'Vendedor',      N'vendedor'),
+  (N'Lucía',   N'Torres',  N'10000003', N'lucia@example.com',      N'999000003', N'Cliente',       N'cliente')
+) AS u(Nombres, Apellidos, Dni, Correo, Telefono, Rol, NombreUsuario)
 JOIN dbo.Rol r ON r.NombreRol = u.Rol;
 GO
 

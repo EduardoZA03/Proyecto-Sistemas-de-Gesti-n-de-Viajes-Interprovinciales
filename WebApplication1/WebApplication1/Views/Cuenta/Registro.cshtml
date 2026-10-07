@@ -1,0 +1,91 @@
+@model RegistroVM
+@{
+    ViewData["Title"] = "Crear cuenta";
+}
+
+<nav class="text-muted small mb-2">INICIO &gt; CONFIGURACIÓN &gt; <span class="text-dark fw-bold">CREAR CUENTA</span></nav>
+<h4 class="fw-bold mb-4"><i class="fa-solid fa-user-plus me-2"></i>Crear cuenta</h4>
+
+@if (TempData["Mensaje"] != null)
+{
+    <div class="alert alert-success">@TempData["Mensaje"]</div>
+}
+<div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+<form asp-action="Registro" method="post" autocomplete="off">
+    <div class="row">
+        <div class="col-lg-7 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold text-teal mb-3">DATOS PERSONALES</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="Nombres" class="form-label">Nombres</label>
+                            <input asp-for="Nombres" class="form-control" maxlength="100" />
+                            <span asp-validation-for="Nombres" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Apellidos" class="form-label">Apellidos</label>
+                            <input asp-for="Apellidos" class="form-control" maxlength="100" />
+                            <span asp-validation-for="Apellidos" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Dni" class="form-label">DNI</label>
+                            <input asp-for="Dni" class="form-control" maxlength="8" inputmode="numeric" />
+                            <span asp-validation-for="Dni" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Telefono" class="form-label">Teléfono <span class="text-muted small">(opcional)</span></label>
+                            <input asp-for="Telefono" class="form-control" maxlength="15" inputmode="tel" />
+                            <span asp-validation-for="Telefono" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="Correo" class="form-label">Correo electrónico</label>
+                            <input asp-for="Correo" type="email" class="form-control" maxlength="100" />
+                            <span asp-validation-for="Correo" class="text-danger small"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold text-teal mb-3">DATOS DE LA CUENTA</h6>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label asp-for="NombreUsuario" class="form-label">ID de usuario</label>
+                            <input asp-for="NombreUsuario" class="form-control" maxlength="30" autocapitalize="none" />
+                            <span asp-validation-for="NombreUsuario" class="text-danger small"></span>
+                            <div class="form-text">Con este ID se inicia sesión.</div>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="Rol" class="form-label">Rol</label>
+                            <select asp-for="Rol" class="form-select">
+                                <option value="Administrador">Administrador</option>
+                                <option value="Vendedor">Vendedor</option>
+                            </select>
+                            <span asp-validation-for="Rol" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="Contrasena" class="form-label">Contraseña</label>
+                            <input asp-for="Contrasena" type="password" class="form-control" maxlength="100" autocomplete="new-password" />
+                            <span asp-validation-for="Contrasena" class="text-danger small"></span>
+                            <div class="form-text">Mínimo 8 caracteres, con letras y números.</div>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="ConfirmarContrasena" class="form-label">Repetir contraseña</label>
+                            <input asp-for="ConfirmarContrasena" type="password" class="form-control" maxlength="100" autocomplete="new-password" />
+                            <span asp-validation-for="ConfirmarContrasena" class="text-danger small"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="btn chaski-btn-primary px-4">
+        <i class="fa-solid fa-floppy-disk me-1"></i> Crear cuenta
+    </button>
+</form>

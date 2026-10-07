@@ -1,4 +1,4 @@
-﻿@model InicioVM
+@model InicioVM
 @{
     ViewData["Title"] = "Inicio";
 }
@@ -9,45 +9,45 @@
 
 <!-- KPIs RÁPIDOS -->
 <div class="row mb-4 g-3">
-    <div class="col-md-3">
-        <div class="card kpi-card">
+    <div class="col-md-6 col-xl-3">
+        <div class="card kpi-card h-100">
             <div class="card-body d-flex justify-content-between align-items-center">
                 <div>
                     <div class="text-muted small">VENTAS HOY</div>
-                    <div class="fs-4 fw-bold">S/ @Model.VentasHoy.ToString("N2")</div>
+                    <div class="fs-3 fw-bold">S/ @Model.VentasHoy.ToString("N2")</div>
                 </div>
                 <i class="fa-solid fa-sack-dollar fa-2x text-success"></i>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card kpi-card">
+    <div class="col-md-6 col-xl-3">
+        <div class="card kpi-card h-100">
             <div class="card-body d-flex justify-content-between align-items-center">
                 <div>
                     <div class="text-muted small">RESERVAS HOY</div>
-                    <div class="fs-4 fw-bold">@Model.ReservasHoy</div>
+                    <div class="fs-3 fw-bold">@Model.ReservasHoy</div>
                 </div>
                 <i class="fa-solid fa-ticket fa-2x text-primary"></i>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card kpi-card kpi-danger">
+    <div class="col-md-6 col-xl-3">
+        <div class="card kpi-card kpi-danger h-100">
             <div class="card-body d-flex justify-content-between align-items-center">
                 <div>
                     <div class="text-muted small">CANCELACIONES HOY</div>
-                    <div class="fs-4 fw-bold">@Model.CancelacionesHoy</div>
+                    <div class="fs-3 fw-bold">@Model.CancelacionesHoy</div>
                 </div>
                 <i class="fa-solid fa-circle-xmark fa-2x text-danger"></i>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card kpi-card">
+    <div class="col-md-6 col-xl-3">
+        <div class="card kpi-card h-100">
             <div class="card-body d-flex justify-content-between align-items-center">
                 <div>
                     <div class="text-muted small">OCUPACIÓN PROM.</div>
-                    <div class="fs-4 fw-bold">@Model.OcupacionPromedio.ToString("0.0")%</div>
+                    <div class="fs-3 fw-bold">@Model.OcupacionPromedio.ToString("0.0")%</div>
                 </div>
                 <i class="fa-solid fa-chart-pie fa-2x text-teal"></i>
             </div>
@@ -56,8 +56,8 @@
 </div>
 
 <div class="row">
-    <!-- BANNER + ACCESOS DIRECTOS -->
-    <div class="col-md-7 mb-4">
+    <!-- BANNER + ACCESOS DIRECTOS + GRÁFICO -->
+    <div class="col-xl-7 mb-4">
         <div class="chaski-banner d-flex flex-column align-items-center justify-content-center text-center mb-3">
             <i class="fa-solid fa-bus fa-3x chaski-banner-icon mb-3"></i>
             <a asp-controller="Reservas" asp-action="Nueva" class="btn chaski-btn-primary px-4 py-2">
@@ -65,7 +65,7 @@
             </a>
         </div>
 
-        <div class="row g-3">
+        <div class="row g-3 mb-3">
             <div class="col-4">
                 <a asp-controller="Ventas" asp-action="Index" class="quick-access-card">
                     <i class="fa-solid fa-cart-shopping"></i>
@@ -78,24 +78,53 @@
                     <span>Cancelaciones</span>
                 </a>
             </div>
-            <div class="col-4">
-                <a asp-controller="Reportes" asp-action="Index" class="quick-access-card">
-                    <i class="fa-solid fa-clipboard-list"></i>
-                    <span>Reportes</span>
-                </a>
+            @if (User.IsInRole("Administrador"))
+            {
+                <div class="col-4">
+                    <a asp-controller="Reportes" asp-action="Index" class="quick-access-card">
+                        <i class="fa-solid fa-clipboard-list"></i>
+                        <span>Reportes</span>
+                    </a>
+                </div>
+            }
+            else
+            {
+                <div class="col-4">
+                    <a asp-controller="Reservas" asp-action="Index" class="quick-access-card">
+                        <i class="fa-solid fa-bus"></i>
+                        <span>Reservas</span>
+                    </a>
+                </div>
+            }
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-baseline mb-2">
+                    <h6 class="fw-bold text-teal mb-0">Ventas de los últimos 7 días</h6>
+                    <span class="text-muted small">Total: <strong class="text-dark">S/ @Model.TotalSemana.ToString("N2")</strong></span>
+                </div>
+                <div style="height: 240px;">
+                    <canvas id="chartSemana"></canvas>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- ÚLTIMAS RESERVAS -->
-    <div class="col-md-5 mb-4">
-        <div class="card h-100">
+    <!-- ÚLTIMAS RESERVAS + PENDIENTES DE COBRO -->
+    <div class="col-xl-5 mb-4">
+        <div class="card mb-3">
             <div class="card-body">
                 <h6 class="fw-bold text-teal mb-3">Últimas Reservas</h6>
                 <ul class="list-group list-group-flush">
                     @foreach (var r in Model.UltimasReservas)
                     {
-                        var badgeClass = r.Estado == "Confirmada" ? "bg-success-subtle text-success" : "bg-warning-subtle text-warning";
+                        var badgeClass = r.Estado switch
+                        {
+                            "Confirmada" => "bg-success-subtle text-success",
+                            "Cancelada" => "bg-danger-subtle text-danger",
+                            _ => "bg-warning-subtle text-warning"
+                        };
                         <li class="list-group-item d-flex justify-content-between align-items-center px-0">
                             <div>
                                 <div class="fw-semibold">@r.Pasajero</div>
@@ -104,11 +133,133 @@
                             <span class="badge @badgeClass">@r.Estado</span>
                         </li>
                     }
+                    @if (!Model.UltimasReservas.Any())
+                    {
+                        <li class="list-group-item px-0 text-muted">Todavía no hay reservas.</li>
+                    }
                 </ul>
-                <a asp-controller="Ventas" asp-action="Index" class="btn btn-outline-secondary btn-sm w-100 mt-3">
+                <a asp-controller="Reservas" asp-action="Index" class="btn btn-outline-secondary btn-sm w-100 mt-3">
                     Ver todas <i class="fa-solid fa-arrow-right ms-1"></i>
                 </a>
             </div>
         </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold text-teal mb-0">Por cobrar</h6>
+                    @if (Model.TotalPendientes > 0)
+                    {
+                        <span class="badge bg-warning-subtle text-warning">@Model.TotalPendientes pendiente(s)</span>
+                    }
+                </div>
+                @if (Model.PendientesPago.Any())
+                {
+                    <ul class="list-group list-group-flush">
+                        @foreach (var p in Model.PendientesPago)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <div>
+                                    <div class="fw-semibold">@p.Pasajero</div>
+                                    <div class="text-muted small">@p.Codigo · @p.Ruta · @p.FechaViaje.ToString("dd/MM HH:mm")</div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold">S/ @p.Total.ToString("0.00")</div>
+                                    <a asp-controller="Reservas" asp-action="Index" asp-route-estado="Pendiente" asp-route-texto="@p.Codigo"
+                                       class="small text-decoration-none">Cobrar <i class="fa-solid fa-arrow-right"></i></a>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <div class="text-center text-muted py-3">
+                        <i class="fa-solid fa-circle-check fa-2x text-success mb-2"></i>
+                        <div>No hay reservas pendientes de cobro.</div>
+                    </div>
+                }
+            </div>
+        </div>
     </div>
 </div>
+
+<!-- PRÓXIMOS VIAJES -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold text-teal mb-0">Próximos viajes</h6>
+            <a asp-controller="Reservas" asp-action="Nueva" class="btn btn-sm chaski-btn-primary">
+                <i class="fa-solid fa-plus me-1"></i> Reservar
+            </a>
+        </div>
+        @if (Model.ProximosViajes.Any())
+        {
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ruta</th>
+                            <th>Servicio</th>
+                            <th>Salida</th>
+                            <th style="min-width: 220px;">Ocupación</th>
+                            <th class="text-end">Asientos libres</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var v in Model.ProximosViajes)
+                        {
+                            var color = v.Porcentaje >= 70 ? "bg-success" : v.Porcentaje >= 30 ? "bg-info" : "bg-secondary";
+                            <tr>
+                                <td class="fw-semibold">@v.Ruta</td>
+                                <td>@v.Servicio</td>
+                                <td>@v.Salida.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress flex-grow-1" style="height: 10px;">
+                                            <div class="progress-bar @color" role="progressbar" style="width: @(v.Porcentaje)%"></div>
+                                        </div>
+                                        <span class="small text-muted" style="min-width: 5.5em;">@v.Vendidos/@v.Capacidad · @(v.Porcentaje)%</span>
+                                    </div>
+                                </td>
+                                <td class="text-end"><span class="badge bg-success-subtle text-success">@(v.Capacidad - v.Vendidos)</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center text-muted py-4">No hay viajes programados próximamente.</div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script>
+        new Chart(document.getElementById('chartSemana'), {
+            type: 'bar',
+            data: {
+                labels: @Html.Raw(Json.Serialize(Model.VentasSemanaLabels)),
+                datasets: [{
+                    label: 'Ventas (S/)',
+                    data: @Html.Raw(Json.Serialize(Model.VentasSemana)),
+                    backgroundColor: 'rgba(23,166,160,0.75)',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: function (c) { return 'S/ ' + Number(c.parsed.y).toFixed(2); } } }
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { callback: function (v) { return 'S/ ' + v; } } }
+                }
+            }
+        });
+    </script>
+}

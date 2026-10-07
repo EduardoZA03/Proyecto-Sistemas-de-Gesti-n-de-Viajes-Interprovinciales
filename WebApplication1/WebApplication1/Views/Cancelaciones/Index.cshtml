@@ -104,10 +104,11 @@
 
 <div class="row">
     <!-- LISTADO -->
-    <div class="col-md-9">
+    <div class="col-12">
         <div class="card">
             <div class="card-body">
                 <h6 class="fw-bold text-teal mb-3">LISTADO DE CANCELACIONES</h6>
+<div class="table-responsive">
                 <table class="table align-middle table-hover">
                     <thead class="table-light">
                         <tr>
@@ -128,14 +129,14 @@
                         {
                             var badgeClass = c.Estado == "Reembolsado" ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger";
                             <tr>
-                                <td>@c.Codigo</td>
-                                <td>@c.FechaCancelacion.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="text-nowrap">@c.Codigo</td>
+                                <td class="text-nowrap">@c.FechaCancelacion.ToString("dd/MM/yyyy")<br /><span class="text-muted small">@c.FechaCancelacion.ToString("HH:mm")</span></td>
                                 <td>@c.Pasajero<br /><span class="text-muted small">DNI: @c.Documento</span></td>
                                 <td>@c.Ruta</td>
-                                <td>@c.FechaViaje.ToString("dd/MM/yyyy")</td>
-                                <td>S/ @c.MontoTotal.ToString("0.00")</td>
-                                <td>S/ @c.Devolucion.ToString("0.00")</td>
-                                <td>S/ @c.Penalidad.ToString("0.00")</td>
+                                <td class="text-nowrap">@c.FechaViaje.ToString("dd/MM/yyyy")</td>
+                                <td class="text-nowrap">S/ @c.MontoTotal.ToString("0.00")</td>
+                                <td class="text-nowrap">S/ @c.Devolucion.ToString("0.00")</td>
+                                <td class="text-nowrap">S/ @c.Penalidad.ToString("0.00")</td>
                                 <td><span class="badge @badgeClass">@c.Estado</span></td>
                                 <td>
                                     <button class="btn btn-sm btn-outline-secondary" onclick="verDetalle('@c.Codigo')">
@@ -146,37 +147,44 @@
                         }
                     </tbody>
                 </table>
+</div>
             </div>
         </div>
     </div>
 
-    <!-- DETALLE -->
-    <div class="col-md-3">
-        <div class="card mb-3">
-            <div class="card-body" id="detalleCancelacion">
-                <h6 class="fw-bold text-teal mb-3">DETALLE DE CANCELACIÓN</h6>
-                <p class="text-muted small text-center">Selecciona una cancelación para ver los detalles</p>
-            </div>
-        </div>
+    <!-- POLÍTICA -->
+    <div class="col-12 mt-3">
         <div class="card">
             <div class="card-body">
                 <h6 class="fw-bold mb-2"><i class="fa-solid fa-circle-info text-primary me-1"></i> Política de Cancelaciones</h6>
-                <ul class="small text-muted ps-3 mb-0">
-                    <li>24 horas antes del viaje: devolución del 100%.</li>
+                <ul class="text-muted ps-3 mb-0">
+                    <li>24 horas o más antes del viaje: devolución del 100%.</li>
                     <li>Entre 12 y 24 horas antes: devolución del 80% (20% penalidad).</li>
                     <li>Menos de 12 horas antes: no aplica devolución.</li>
                 </ul>
             </div>
         </div>
     </div>
+
+    <!-- DETALLE: panel deslizable -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="panelDetalle" aria-labelledby="panelDetalleTitulo">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="panelDetalleTitulo"><i class="fa-solid fa-circle-xmark me-2 text-danger"></i>Detalle</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+        </div>
+        <div class="offcanvas-body" id="detalleCancelacion"></div>
+    </div>
 </div>
 
 @section Scripts {
     <script>
         function verDetalle(codigo) {
-            fetch('/Cancelaciones/Detalle?codigo=' + codigo)
+            const cuerpo = document.getElementById('detalleCancelacion');
+            cuerpo.innerHTML = '<p class="text-muted text-center">Cargando…</p>';
+            bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('panelDetalle')).show();
+            fetch('/Cancelaciones/Detalle?codigo=' + encodeURIComponent(codigo))
                 .then(r => r.text())
-                .then(html => document.getElementById('detalleCancelacion').innerHTML = html);
+                .then(html => cuerpo.innerHTML = html);
         }
     </script>
 }

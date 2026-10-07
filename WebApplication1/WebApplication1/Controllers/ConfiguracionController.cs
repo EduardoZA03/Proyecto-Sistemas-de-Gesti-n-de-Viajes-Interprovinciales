@@ -1,3 +1,8 @@
+using System.Net.Mail;
+using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebApplication1.Data;
@@ -13,12 +18,13 @@ namespace WebApplication1.Controllers
 
         public async Task<IActionResult> Index()
         {
-            var usuario = await _db.ObtenerUsuarioActualAsync();
+            var usuario = await _db.ObtenerUsuarioActualAsync(User);
             var sucursal = await _db.Terminales.AsNoTracking()
                 .OrderBy(t => t.IdTerminal).Select(t => t.NombreTerminal).FirstOrDefaultAsync();
 
             var model = new ConfiguracionVM
             {
+                NombreUsuario = usuario?.NombreUsuario ?? string.Empty,
                 Nombres = usuario?.Nombres ?? string.Empty,
                 Apellidos = usuario?.Apellidos ?? string.Empty,
                 Correo = usuario?.Correo ?? string.Empty,
@@ -41,7 +47,7 @@ namespace WebApplication1.Controllers
         [HttpPost]
         public async Task<IActionResult> GuardarPerfil(ConfiguracionVM model)
         {
-            var usuario = await _db.ObtenerUsuarioActualAsync();
+            var usuario = await _db.ObtenerUsuarioActualAsync(User);
             if (usuario is null)
             {
                 TempData["Error"] = "No se encontró el usuario.";
@@ -50,43 +56,80 @@ namespace WebApplication1.Controllers
 
             var nombres = model.Nombres?.Trim() ?? string.Empty;
             var apellidos = model.Apellidos?.Trim() ?? string.Empty;
-            var correo = model.Correo?.Trim() ?? string.Empty;
+            var correo = model.Correo?.Trim().ToLowerInvariant() ?? string.Empty;
             var dni = model.Dni?.Trim() ?? string.Empty;
+            var telefono = model.Telefono?.Trim() ?? string.Empty;
 
             if (nombres == "" || apellidos == "" || correo == "" || dni == "")
             {
                 TempData["Error"] = "Nombres, apellidos, correo y DNI son obligatorios.";
                 return RedirectToAction("Index");
             }
+            if (!Regex.IsMatch(dni, @"^\d{8}$"))
+            {
+                TempData["Error"] = "El DNI debe tener 8 dígitos.";
+                return RedirectToAction("Index");
+            }
+            if (!MailAddress.TryCreate(correo, out _) || correo.Length > 100)
+            {
+                TempData["Error"] = "El correo no es válido.";
+                return RedirectToAction("Index");
+            }
+            if (telefono != "" && !Regex.IsMatch(telefono, @"^[0-9+ ]{6,15}$"))
+            {
+                TempData["Error"] = "El teléfono debe tener entre 6 y 15 dígitos.";
+                return RedirectToAction("Index");
+            }
 
             usuario.Nombres = nombres;
             usuario.Apellidos = apellidos;
             usuario.Correo = correo;
-            usuario.Telefono = model.Telefono?.Trim() ?? string.Empty;
+            usuario.Telefono = telefono;
             usuario.Dni = dni;
 
             try
             {
                 await _db.SaveChangesAsync();
+                // Se renueva la sesión para que el encabezado muestre el nombre nuevo
+                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, Seguridad.CrearPrincipal(usuario));
                 TempData["Mensaje"] = "Datos del perfil actualizados correctamente.";
             }
             catch (DbUpdateException)
             {
-                TempData["Error"] = "No se pudo guardar. Revisa que el DNI (máx. 8 dígitos) y el correo no estén registrados por otro usuario.";
+                TempData["Error"] = "No se pudo guardar. Revisa que el DNI y el correo no estén registrados por otro usuario.";
             }
             return RedirectToAction("Index");
         }
 
         [HttpPost]
-        public IActionResult CambiarContrasena(ConfiguracionVM model)
+        public async Task<IActionResult> CambiarContrasena(ConfiguracionVM model)
         {
-            // La tabla Usuario aún no tiene columna de contraseña; se valida pero no se guarda.
-            if (model.NuevaContrasena != model.ConfirmarContrasena)
+            var usuario = await _db.ObtenerUsuarioActualAsync(User);
+            if (usuario is null)
             {
-                TempData["Error"] = "Las contraseñas no coinciden.";
+                TempData["Error"] = "No se encontró el usuario.";
+                return RedirectToAction("Index");
             }
+
+            var actual = model.ContrasenaActual ?? string.Empty;
+            var nueva = model.NuevaContrasena ?? string.Empty;
+
+            var verificacion = usuario.ContrasenaHash is null
+                ? PasswordVerificationResult.Failed
+                : Seguridad.Hasher.VerifyHashedPassword(usuario, usuario.ContrasenaHash, actual);
+
+            if (verificacion == PasswordVerificationResult.Failed)
+                TempData["Error"] = "La contraseña actual no es correcta.";
+            else if (nueva != model.ConfirmarContrasena)
+                TempData["Error"] = "Las contraseñas no coinciden.";
+            else if (Seguridad.ValidarContrasena(nueva) is { } errorClave)
+                TempData["Error"] = errorClave;
+            else if (nueva == actual)
+                TempData["Error"] = "La nueva contraseña debe ser distinta de la actual.";
             else
             {
+                usuario.ContrasenaHash = Seguridad.Hasher.HashPassword(usuario, nueva);
+                await _db.SaveChangesAsync();
                 TempData["Mensaje"] = "Contraseña actualizada correctamente.";
             }
             return RedirectToAction("Index");
