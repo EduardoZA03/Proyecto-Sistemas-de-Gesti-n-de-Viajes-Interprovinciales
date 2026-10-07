@@ -7,6 +7,11 @@
 <h4 class="fw-bold"><i class="fa-solid fa-clipboard-list me-2"></i>Reportes Analíticos</h4>
 <p class="text-muted">Consulta y analiza la información de operaciones para la toma de decisiones estratégicas.</p>
 
+@if (ViewData["Aviso"] != null)
+{
+    <div class="alert alert-warning">@ViewData["Aviso"]</div>
+}
+
 <div class="row">
     <div class="col-md-9">
         <!-- FILTROS -->

@@ -1,4 +1,6 @@
 using System.Data;
+using System.Net.Mail;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebApplication1.Data;
@@ -9,6 +11,21 @@ namespace WebApplication1.Controllers
 {
     public class ReservasController : Controller
     {
+        // Letras (con tildes y ñ), espacios, punto, guion y apóstrofe; de 2 a 100 caracteres
+        private static readonly Regex FormatoNombre = new(@"^\p{L}[\p{L} .'\-]{1,99}$", RegexOptions.Compiled);
+        private static readonly Regex FormatoTelefono = new(@"^[0-9+ ]{6,15}$", RegexOptions.Compiled);
+
+        private static string LimpiarEspacios(string? texto) => Regex.Replace((texto ?? string.Empty).Trim(), @"\s+", " ");
+
+        // Formato de cada tipo de documento
+        private static (Regex Formato, string Mensaje)? ReglaDocumento(string tipo) => tipo switch
+        {
+            "DNI" => (new Regex(@"^\d{8}$"), "El DNI debe tener exactamente 8 dígitos."),
+            "Carné Extranjería" => (new Regex(@"^[A-Za-z0-9]{9,12}$"), "El carné de extranjería debe tener entre 9 y 12 letras o números."),
+            "Pasaporte" => (new Regex(@"^[A-Za-z0-9]{6,12}$"), "El pasaporte debe tener entre 6 y 12 letras o números."),
+            _ => null
+        };
+
         private readonly ChaskiRutaContext _db;
 
         public ReservasController(ChaskiRutaContext db) => _db = db;
@@ -186,9 +203,16 @@ namespace WebApplication1.Controllers
         [HttpPost]
         public async Task<IActionResult> BuscarViajes(NuevaReservaVM model)
         {
-            model.ViajesDisponibles = await BuscarAsync(model);
-            if (!model.ViajesDisponibles.Any())
-                model.AvisoBusqueda = await ExplicarSinResultadosAsync(model);
+            if (model.FechaViaje is { } fecha && fecha.Date < DateTime.Today)
+                model.AvisoBusqueda = $"La fecha {fecha:dd/MM/yyyy} ya pasó. Elige hoy o una fecha futura, o déjala vacía para ver todos los próximos viajes.";
+            else if (model.Pasajeros < 1 || model.Pasajeros > 10)
+                model.AvisoBusqueda = "La cantidad de pasajeros debe estar entre 1 y 10.";
+            else
+            {
+                model.ViajesDisponibles = await BuscarAsync(model);
+                if (!model.ViajesDisponibles.Any())
+                    model.AvisoBusqueda = await ExplicarSinResultadosAsync(model);
+            }
             await CargarCiudadesAsync(model);
             return View("Nueva", model);
         }
@@ -210,9 +234,9 @@ namespace WebApplication1.Controllers
         [HttpPost]
         public async Task<IActionResult> GuardarReserva(NuevaReservaVM model)
         {
-            async Task<IActionResult> Fallo(string mensaje)
+            async Task<IActionResult> Fallo(string? mensaje = null)
             {
-                ViewData["Error"] = mensaje;
+                ViewData["Error"] = mensaje ?? "Revisa los datos marcados en rojo.";
                 if (model.IdViajeSeleccionado is { } id)
                 {
                     model.Asientos = await AsientosAsync(id);
@@ -222,16 +246,69 @@ namespace WebApplication1.Controllers
                 return View("Nueva", model);
             }
 
-            var nombres = model.Nombres?.Trim() ?? string.Empty;
-            var apellidos = model.Apellidos?.Trim() ?? string.Empty;
-            var documento = model.NumeroDocumento?.Trim() ?? string.Empty;
+            // Los errores se marcan campo por campo. Se limpia el ModelState porque MVC agrega solo
+            // errores "requerido" a campos opcionales vacíos (teléfono, correo) que no queremos mostrar.
+            ModelState.Clear();
 
-            if (model.IdViajeSeleccionado is not { } idViaje || model.AsientoSeleccionado is not { } idAsiento)
-                return await Fallo("Selecciona un viaje y un asiento.");
-            if (nombres == "" || apellidos == "" || documento == "")
-                return await Fallo("Completa nombres, apellidos y número de documento del pasajero.");
-            if (model.Edad is not { } edad || edad < 0 || edad > 120)
-                return await Fallo("Ingresa la edad del pasajero.");
+            var nombres = LimpiarEspacios(model.Nombres);
+            var apellidos = LimpiarEspacios(model.Apellidos);
+            var tipoDoc = model.TipoDocumento?.Trim() ?? string.Empty;
+            var documento = model.NumeroDocumento?.Trim() ?? string.Empty;
+            var telefono = model.Telefono?.Trim() ?? string.Empty;
+            var correo = model.Correo?.Trim() ?? string.Empty;
+
+            if (model.IdViajeSeleccionado is not { } idViaje)
+                return await Fallo("Selecciona un viaje.");
+
+            if (model.AsientoSeleccionado is null)
+                ModelState.AddModelError(nameof(model.AsientoSeleccionado), "Elige un asiento en el mapa.");
+
+            if (!FormatoNombre.IsMatch(nombres))
+                ModelState.AddModelError(nameof(model.Nombres), nombres == ""
+                    ? "Ingresa los nombres."
+                    : "Los nombres solo pueden tener letras, espacios, punto, guion o apóstrofe (mínimo 2 caracteres).");
+            if (!FormatoNombre.IsMatch(apellidos))
+                ModelState.AddModelError(nameof(model.Apellidos), apellidos == ""
+                    ? "Ingresa los apellidos."
+                    : "Los apellidos solo pueden tener letras, espacios, punto, guion o apóstrofe (mínimo 2 caracteres).");
+
+            var reglaDoc = ReglaDocumento(tipoDoc);
+            if (reglaDoc is null)
+                ModelState.AddModelError(nameof(model.TipoDocumento), "Elige el tipo de documento.");
+            else if (documento == "")
+                ModelState.AddModelError(nameof(model.NumeroDocumento), "Ingresa el número de documento.");
+            else if (!reglaDoc.Value.Formato.IsMatch(documento))
+                ModelState.AddModelError(nameof(model.NumeroDocumento), reglaDoc.Value.Mensaje);
+            else if (tipoDoc != "DNI")
+                documento = documento.ToUpperInvariant();
+
+            if (telefono != "" && !FormatoTelefono.IsMatch(telefono))
+                ModelState.AddModelError(nameof(model.Telefono), "El teléfono debe tener entre 6 y 15 dígitos (puede llevar + y espacios).");
+
+            if (correo != "" && !Formato.CorreoValido(correo))
+                ModelState.AddModelError(nameof(model.Correo), "El correo no es válido (ejemplo: nombre@correo.com).");
+
+            if (model.Edad is null)
+                ModelState.AddModelError(nameof(model.Edad), "Ingresa la edad del pasajero.");
+            else if (model.Edad < 0 || model.Edad > 120)
+                ModelState.AddModelError(nameof(model.Edad), "La edad debe estar entre 0 y 120 años.");
+
+            // La misma persona no puede tener dos reservas activas en el mismo viaje
+            if (reglaDoc is not null && ModelState.GetValidationState(nameof(model.NumeroDocumento)) != Microsoft.AspNetCore.Mvc.ModelBinding.ModelValidationState.Invalid)
+            {
+                var repetida = await _db.Pasajeros.AsNoTracking()
+                    .Where(p => p.NroDocumento == documento && p.TipoDocumento == tipoDoc
+                                && p.Reserva.IdViaje == idViaje && p.Reserva.Estado != "Cancelada")
+                    .Select(p => p.Reserva.CodigoReserva).FirstOrDefaultAsync();
+                if (repetida != null)
+                    ModelState.AddModelError(nameof(model.NumeroDocumento), $"Esa persona ya tiene la reserva {repetida} en este viaje.");
+            }
+
+            if (!ModelState.IsValid)
+                return await Fallo();
+
+            var idAsiento = model.AsientoSeleccionado!.Value;
+            var edad = model.Edad!.Value;
 
             var usuario = await _db.ObtenerUsuarioActualAsync(User);
             if (usuario is null)
@@ -278,11 +355,11 @@ namespace WebApplication1.Controllers
                         {
                             Nombres = nombres,
                             Apellidos = apellidos,
-                            TipoDocumento = string.IsNullOrWhiteSpace(model.TipoDocumento) ? "DNI" : model.TipoDocumento,
+                            TipoDocumento = tipoDoc,
                             NroDocumento = documento,
                             FechaNacimiento = DateTime.Today.AddYears(-edad),
-                            Telefono = model.Telefono?.Trim() ?? string.Empty,
-                            Correo = model.Correo?.Trim() ?? string.Empty
+                            Telefono = telefono,
+                            Correo = correo
                         }
                     },
                     ReservaAsientos =

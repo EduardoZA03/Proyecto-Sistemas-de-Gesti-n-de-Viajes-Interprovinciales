@@ -2,6 +2,10 @@
 @{
     ViewData["Title"] = "Nueva Reserva";
     var viaje = Model.ViajeSeleccionado;
+
+    // Marca en rojo el campo que tiene un error (los mensajes los muestra asp-validation-for)
+    string Inv(string campo) =>
+        ViewData.ModelState.TryGetValue(campo, out var entrada) && entrada.Errors.Count > 0 ? "is-invalid" : "";
 }
 
 <nav class="text-muted small mb-2">INICIO &gt; RESERVAS &gt; <span class="text-dark fw-bold">NUEVA RESERVA</span></nav>
@@ -31,11 +35,11 @@
             </div>
             <div class="col-md-3">
                 <label asp-for="FechaViaje" class="form-label">Fecha <span class="text-muted small">(opcional)</span></label>
-                <input asp-for="FechaViaje" type="date" class="form-control" />
+                <input asp-for="FechaViaje" type="date" class="form-control" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
             </div>
             <div class="col-md-2">
                 <label asp-for="Pasajeros" class="form-label">Pasajeros</label>
-                <input asp-for="Pasajeros" type="number" min="1" class="form-control" />
+                <input asp-for="Pasajeros" type="number" min="1" max="10" class="form-control" />
             </div>
             <div class="col-md-1">
                 <button type="submit" class="btn chaski-btn-primary w-100" title="Buscar viajes">
@@ -128,7 +132,7 @@
         </div>
     }
 
-    <form asp-action="GuardarReserva" method="post">
+    <form asp-action="GuardarReserva" method="post" id="formReserva" novalidate autocomplete="off">
         <input type="hidden" asp-for="IdViajeSeleccionado" />
         <input type="hidden" asp-for="Origen" />
         <input type="hidden" asp-for="Destino" />
@@ -143,7 +147,9 @@
                         <div class="d-flex flex-wrap gap-2 mb-3" id="seatMap">
                             @foreach (var a in Model.Asientos)
                             {
-                                var claseEstado = a.Estado == "Ocupado" ? "seat-ocupado" : "seat-disponible";
+                                var claseEstado = a.Estado == "Ocupado"
+                                    ? "seat-ocupado"
+                                    : a.IdAsiento == Model.AsientoSeleccionado ? "seat-disponible seat-seleccionado" : "seat-disponible";
                                 <div class="seat @claseEstado" data-id="@a.IdAsiento" onclick="seleccionarAsiento(this)">@a.Numero</div>
                             }
                         </div>
@@ -153,6 +159,7 @@
                             <span><span class="seat-legend seat-ocupado"></span> Ocupado</span>
                             <span><span class="seat-legend seat-seleccionado"></span> Seleccionado</span>
                         </div>
+                        <span asp-validation-for="AsientoSeleccionado" class="text-danger small d-block mt-2"></span>
                     </div>
                 </div>
             </div>
@@ -164,39 +171,47 @@
                         <h6 class="fw-bold text-teal mb-3">5. DATOS DEL PASAJERO</h6>
                         <div class="row g-2">
                             <div class="col-6">
-                                <label class="form-label">Tipo documento</label>
-                                <select asp-for="TipoDocumento" class="form-select">
-                                    <option>DNI</option>
-                                    <option>Carné Extranjería</option>
-                                    <option>Pasaporte</option>
+                                <label asp-for="TipoDocumento" class="form-label">Tipo documento</label>
+                                <select asp-for="TipoDocumento" class="form-select @(Inv("TipoDocumento"))">
+                                    <option value="DNI">DNI</option>
+                                    <option value="Carné Extranjería">Carné Extranjería</option>
+                                    <option value="Pasaporte">Pasaporte</option>
                                 </select>
+                                <span asp-validation-for="TipoDocumento" class="text-danger small"></span>
                             </div>
                             <div class="col-6">
-                                <label class="form-label">Número documento</label>
-                                <input asp-for="NumeroDocumento" class="form-control" />
+                                <label asp-for="NumeroDocumento" class="form-label">Número documento</label>
+                                <input asp-for="NumeroDocumento" class="form-control @(Inv("NumeroDocumento"))" maxlength="12" inputmode="numeric" />
+                                <span asp-validation-for="NumeroDocumento" class="text-danger small"></span>
                             </div>
                             <div class="col-6">
-                                <label class="form-label">Nombres</label>
-                                <input asp-for="Nombres" class="form-control" />
+                                <label asp-for="Nombres" class="form-label">Nombres</label>
+                                <input asp-for="Nombres" class="form-control @(Inv("Nombres"))" maxlength="100" />
+                                <span asp-validation-for="Nombres" class="text-danger small"></span>
                             </div>
                             <div class="col-6">
-                                <label class="form-label">Apellidos</label>
-                                <input asp-for="Apellidos" class="form-control" />
+                                <label asp-for="Apellidos" class="form-label">Apellidos</label>
+                                <input asp-for="Apellidos" class="form-control @(Inv("Apellidos"))" maxlength="100" />
+                                <span asp-validation-for="Apellidos" class="text-danger small"></span>
                             </div>
                             <div class="col-6">
-                                <label class="form-label">Teléfono</label>
-                                <input asp-for="Telefono" class="form-control" />
+                                <label asp-for="Telefono" class="form-label">Teléfono <span class="text-muted small">(opcional)</span></label>
+                                <input asp-for="Telefono" class="form-control @(Inv("Telefono"))" maxlength="15" inputmode="tel" />
+                                <span asp-validation-for="Telefono" class="text-danger small"></span>
                             </div>
                             <div class="col-6">
-                                <label class="form-label">Correo</label>
-                                <input asp-for="Correo" class="form-control" />
+                                <label asp-for="Correo" class="form-label">Correo <span class="text-muted small">(opcional)</span></label>
+                                <input asp-for="Correo" class="form-control @(Inv("Correo"))" maxlength="100" inputmode="email" />
+                                <span asp-validation-for="Correo" class="text-danger small"></span>
                             </div>
                             <div class="col-6">
-                                <label class="form-label">Edad</label>
-                                <input asp-for="Edad" type="number" class="form-control" />
+                                <label asp-for="Edad" class="form-label">Edad</label>
+                                <input asp-for="Edad" type="number" min="0" max="120" class="form-control @(Inv("Edad"))" />
+                                <span asp-validation-for="Edad" class="text-danger small"></span>
+                                <div class="form-text">Define la tarifa: Niño (menor de 12), Tercera Edad (60 o más) o General.</div>
                             </div>
                             <div class="col-6">
-                                <label class="form-label">Género</label>
+                                <label asp-for="Genero" class="form-label">Género</label>
                                 <select asp-for="Genero" class="form-select">
                                     <option>Masculino</option>
                                     <option>Femenino</option>
@@ -218,7 +233,7 @@
                         <strong>Salida:</strong> @viaje.Salida.ToString("dd/MM/yyyy HH:mm")
                     }
                 </div>
-                <button type="submit" class="btn chaski-btn-primary px-4">
+                <button type="submit" class="btn chaski-btn-primary px-4" id="btnGuardar">
                     <i class="fa-solid fa-floppy-disk me-1"></i> Guardar reserva
                 </button>
             </div>
@@ -230,9 +245,82 @@
     <script>
         function seleccionarAsiento(el) {
             if (el.classList.contains('seat-ocupado')) return;
-            document.querySelectorAll('.seat-seleccionado').forEach(s => s.classList.remove('seat-seleccionado'));
+            document.querySelectorAll('.seat-seleccionado').forEach(function (s) { s.classList.remove('seat-seleccionado'); });
             el.classList.add('seat-seleccionado');
             document.getElementById('AsientoSeleccionado').value = el.dataset.id;
+            var aviso = document.querySelector('[data-valmsg-for="AsientoSeleccionado"]');
+            if (aviso) aviso.textContent = '';
         }
+
+        // Validación inmediata en el navegador (el servidor vuelve a validar todo)
+        (function () {
+            var form = document.getElementById('formReserva');
+            if (!form) return;
+
+            var reglas = {
+                'DNI': { re: /^\d{8}$/, max: 8, modo: 'numeric', msg: 'El DNI debe tener exactamente 8 dígitos.' },
+                'Carné Extranjería': { re: /^[A-Za-z0-9]{9,12}$/, max: 12, modo: 'text', msg: 'El carné de extranjería debe tener entre 9 y 12 letras o números.' },
+                'Pasaporte': { re: /^[A-Za-z0-9]{6,12}$/, max: 12, modo: 'text', msg: 'El pasaporte debe tener entre 6 y 12 letras o números.' }
+            };
+            var tipo = document.getElementById('TipoDocumento');
+            var doc = document.getElementById('NumeroDocumento');
+            function ajustarDocumento() {
+                var r = reglas[tipo.value];
+                if (r) { doc.maxLength = r.max; doc.inputMode = r.modo; }
+            }
+            tipo.addEventListener('change', ajustarDocumento);
+            ajustarDocumento();
+
+            var nombreRe = /^\p{L}[\p{L} .'\-]{1,99}$/u;
+            var telRe = /^[0-9+ ]{6,15}$/;
+            // En Razor la arroba se escribe doble (@@) dentro del JavaScript
+            var correoRe = /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/;
+
+            function marcar(campo, texto) {
+                var span = form.querySelector('[data-valmsg-for="' + campo + '"]');
+                if (span) span.textContent = texto || '';
+                var el = document.getElementById(campo);
+                if (el) el.classList.toggle('is-invalid', !!texto);
+                return texto ? campo : null;
+            }
+
+            // Al escribir en un campo se quita su error
+            form.addEventListener('input', function (ev) { if (ev.target.id) marcar(ev.target.id, ''); });
+            form.addEventListener('change', function (ev) { if (ev.target.id) marcar(ev.target.id, ''); });
+
+            form.addEventListener('submit', function (ev) {
+                var errores = [];
+                function revisar(campo, texto) { var e = marcar(campo, texto); if (e) errores.push(e); }
+
+                var nombres = form.elements['Nombres'].value.trim().replace(/\s+/g, ' ');
+                var apellidos = form.elements['Apellidos'].value.trim().replace(/\s+/g, ' ');
+                var numero = doc.value.trim();
+                var telefono = form.elements['Telefono'].value.trim();
+                var correo = form.elements['Correo'].value.trim();
+                var edadTxt = form.elements['Edad'].value.trim();
+                var edad = parseInt(edadTxt, 10);
+
+                revisar('AsientoSeleccionado', document.getElementById('AsientoSeleccionado').value ? '' : 'Elige un asiento en el mapa.');
+                revisar('Nombres', nombres === '' ? 'Ingresa los nombres.' : (!nombreRe.test(nombres) ? 'Los nombres solo pueden tener letras, espacios, punto, guion o apóstrofe (mínimo 2 caracteres).' : ''));
+                revisar('Apellidos', apellidos === '' ? 'Ingresa los apellidos.' : (!nombreRe.test(apellidos) ? 'Los apellidos solo pueden tener letras, espacios, punto, guion o apóstrofe (mínimo 2 caracteres).' : ''));
+                var r = reglas[tipo.value];
+                revisar('NumeroDocumento', numero === '' ? 'Ingresa el número de documento.' : (r && !r.re.test(numero) ? r.msg : ''));
+                revisar('Telefono', telefono !== '' && !telRe.test(telefono) ? 'El teléfono debe tener entre 6 y 15 dígitos (puede llevar + y espacios).' : '');
+                revisar('Correo', correo !== '' && !correoRe.test(correo) ? 'El correo no es válido (ejemplo: nombre@correo.com).' : '');
+                revisar('Edad', edadTxt === '' ? 'Ingresa la edad del pasajero.' : (isNaN(edad) || edad < 0 || edad > 120 ? 'La edad debe estar entre 0 y 120 años.' : ''));
+
+                if (errores.length) {
+                    ev.preventDefault();
+                    var primero = errores[0] === 'AsientoSeleccionado' ? document.getElementById('seatMap') : document.getElementById(errores[0]);
+                    if (primero) primero.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return;
+                }
+
+                // Evita guardar dos veces por un doble clic
+                var btn = document.getElementById('btnGuardar');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+            });
+        })();
     </script>
 }

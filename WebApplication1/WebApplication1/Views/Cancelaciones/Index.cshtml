@@ -7,6 +7,11 @@
 <h4 class="fw-bold"><i class="fa-solid fa-circle-xmark me-2 text-danger"></i>Gestión de Cancelaciones</h4>
 <p class="text-muted">Busca y administra las cancelaciones de reservas y ventas.</p>
 
+@if (ViewData["Aviso"] != null)
+{
+    <div class="alert alert-warning">@ViewData["Aviso"]</div>
+}
+
 <!-- FILTROS -->
 <div class="card mb-4">
     <div class="card-body">

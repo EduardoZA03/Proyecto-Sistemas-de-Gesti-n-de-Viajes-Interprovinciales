@@ -76,7 +76,7 @@ namespace WebApplication1.Controllers
                 TempData["Error"] = "El DNI debe tener 8 dígitos.";
                 return RedirectToAction("Index");
             }
-            if (!MailAddress.TryCreate(correo, out _) || correo.Length > 100)
+            if (!Formato.CorreoValido(correo))
             {
                 TempData["Error"] = "El correo no es válido.";
                 return RedirectToAction("Index");
