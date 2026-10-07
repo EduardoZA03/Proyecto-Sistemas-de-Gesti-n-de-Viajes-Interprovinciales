@@ -23,6 +23,39 @@ namespace WebApplication1.Data
         public static readonly string[] Todos = { "Efectivo", "Tarjeta", "Yape", "Plin", "Transferencia" };
     }
 
+    public static class Servicios
+    {
+        public static readonly string[] Todos = { "Ejecutivo", "Semi Cama", "Cama Suite" };
+    }
+
+    public static class EstadosBus
+    {
+        public const string Operativo = "Operativo";
+        public const string Mantenimiento = "Mantenimiento";
+        public const string Baja = "Baja";
+        public static readonly string[] Todos = { Operativo, Mantenimiento, Baja };
+    }
+
+    public static class AsientosDeBus
+    {
+        public const int MinCapacidad = 10;
+        public const int MaxCapacidad = 80;
+
+        // Numera "01", "02"... En buses de 2 pisos, el primer 30 % queda en el piso 1
+        // (igual que los buses de ejemplo: 12 de 40 asientos abajo)
+        public static List<Asiento> Generar(int capacidad, int pisos)
+        {
+            var piso1 = pisos == 2 ? (int)Math.Round(capacidad * 0.3) : capacidad;
+            return Enumerable.Range(1, capacidad)
+                .Select(n => new Asiento
+                {
+                    NumeroAsiento = n.ToString("D2"),
+                    Piso = n <= piso1 ? 1 : 2,
+                    Estado = "Disponible"
+                }).ToList();
+        }
+    }
+
     // Las 4 tarifas que se generan para cada viaje: porcentaje del precio base
     public static class TarifasEstandar
     {
