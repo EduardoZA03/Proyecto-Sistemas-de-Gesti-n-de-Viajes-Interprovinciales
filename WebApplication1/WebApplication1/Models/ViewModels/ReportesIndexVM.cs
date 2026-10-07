@@ -9,6 +9,10 @@
         public string Ruta { get; set; } = string.Empty;
         public string Servicio { get; set; } = string.Empty;
 
+        // Opciones de los filtros (vienen de la base de datos)
+        public List<string> RutasDisponibles { get; set; } = new();
+        public List<string> ServiciosDisponibles { get; set; } = new();
+
         // KPIs
         public decimal TotalIngresos { get; set; }
         public int TotalPasajeros { get; set; }

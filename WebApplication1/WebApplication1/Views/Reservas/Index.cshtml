@@ -1,16 +1,205 @@
-﻿@{
+@model ReservasIndexVM
+@{
     ViewData["Title"] = "Reservas";
 }
 
 <nav class="text-muted small mb-2">INICIO &gt; <span class="text-dark fw-bold">RESERVAS</span></nav>
-<h4 class="fw-bold mb-4"><i class="fa-solid fa-bus me-2"></i>Gestión de Reservas</h4>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0"><i class="fa-solid fa-bus me-2"></i>Gestión de Reservas</h4>
+    <a asp-controller="Reservas" asp-action="Nueva" class="btn chaski-btn-primary px-4">
+        <i class="fa-solid fa-plus me-1"></i> Nueva Reserva
+    </a>
+</div>
 
-<div class="card">
-    <div class="card-body text-center py-5">
-        <i class="fa-solid fa-ticket fa-3x text-teal mb-3"></i>
-        <p class="text-muted">Registra una nueva reserva de viaje para un pasajero.</p>
-        <a asp-controller="Reservas" asp-action="Nueva" class="btn chaski-btn-primary px-4">
-            <i class="fa-solid fa-plus me-1"></i> Nueva Reserva
-        </a>
+@if (TempData["Mensaje"] != null)
+{
+    <div class="alert alert-success">@TempData["Mensaje"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<!-- FILTROS -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form asp-action="Index" method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Estado</label>
+                <select name="estado" class="form-select">
+                    @foreach (var op in new[] { "Todos", "Pendiente", "Confirmada", "Cancelada" })
+                    {
+                        <option value="@op" selected="@(Model.Estado == op)">@op</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Código / Pasajero</label>
+                <input name="texto" value="@Model.Texto" class="form-control" placeholder="RES-000012, nombre o documento" />
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn chaski-btn-primary w-100">
+                    <i class="fa-solid fa-magnifying-glass me-1"></i> Buscar
+                </button>
+            </div>
+        </form>
     </div>
 </div>
+
+<!-- LISTADO -->
+<div class="card">
+    <div class="card-body">
+        <h6 class="fw-bold text-teal mb-3">LISTADO DE RESERVAS</h6>
+        <div class="table-responsive">
+            <table class="table align-middle table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Código</th>
+                        <th>Pasajero</th>
+                        <th>Ruta</th>
+                        <th>Fecha viaje</th>
+                        <th>Asientos</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Reservas)
+                    {
+                        var badge = r.Estado switch
+                        {
+                            "Confirmada" => "bg-success-subtle text-success",
+                            "Pendiente" => "bg-warning-subtle text-warning",
+                            _ => "bg-danger-subtle text-danger"
+                        };
+                        <tr>
+                            <td>@r.Codigo<br /><span class="text-muted small">@r.FechaReserva.ToString("dd/MM/yyyy HH:mm")</span></td>
+                            <td>@r.Pasajero<br /><span class="text-muted small">DNI: @r.Documento</span></td>
+                            <td>@r.Ruta</td>
+                            <td>@r.FechaViaje.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@r.Asientos</td>
+                            <td>S/ @r.Total.ToString("0.00")</td>
+                            <td><span class="badge @badge">@r.Estado</span></td>
+                            <td class="text-end text-nowrap">
+                                @if (r.PuedeCobrar)
+                                {
+                                    <button type="button" class="btn btn-sm btn-success"
+                                            data-bs-toggle="modal" data-bs-target="#modalCobrar"
+                                            data-id="@r.IdReserva" data-codigo="@r.Codigo"
+                                            data-pasajero="@r.Pasajero" data-total="@r.Total.ToString("0.00")">
+                                        <i class="fa-solid fa-money-bill-wave me-1"></i> Cobrar
+                                    </button>
+                                }
+                                @if (r.PuedeCancelar)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal" data-bs-target="#modalCancelar"
+                                            data-id="@r.IdReserva" data-codigo="@r.Codigo"
+                                            data-pasajero="@r.Pasajero"
+                                            data-pagado="@r.Pagado.ToString("0.00")"
+                                            data-pct="@r.PorcentajeDevolucion"
+                                            data-devolucion="@r.DevolucionEstimada.ToString("0.00")">
+                                        <i class="fa-solid fa-ban me-1"></i> Cancelar
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Reservas.Any())
+                    {
+                        <tr><td colspan="8" class="text-center text-muted py-4">No hay reservas con esos filtros.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: COBRAR -->
+<div class="modal fade" id="modalCobrar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form asp-action="Cobrar" method="post" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa-solid fa-money-bill-wave me-2 text-success"></i>Cobrar reserva</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="idReserva" id="cobrarId" />
+                <p class="mb-1"><strong>Reserva:</strong> <span id="cobrarCodigo"></span></p>
+                <p class="mb-1"><strong>Pasajero:</strong> <span id="cobrarPasajero"></span></p>
+                <p class="mb-3"><strong>Total a cobrar:</strong> S/ <span id="cobrarTotal"></span></p>
+                <div class="mb-3">
+                    <label class="form-label">Método de pago</label>
+                    <select name="metodoPago" class="form-select" required>
+                        @foreach (var m in Model.MetodosPago)
+                        {
+                            <option>@m</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Referencia / N° de operación <span class="text-muted small">(opcional)</span></label>
+                    <input name="referencia" maxlength="100" class="form-control" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Volver</button>
+                <button type="submit" class="btn btn-success">Confirmar cobro</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: CANCELAR -->
+<div class="modal fade" id="modalCancelar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form asp-action="Cancelar" method="post" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa-solid fa-ban me-2 text-danger"></i>Cancelar reserva</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="idReserva" id="cancelarId" />
+                <p class="mb-1"><strong>Reserva:</strong> <span id="cancelarCodigo"></span></p>
+                <p class="mb-3"><strong>Pasajero:</strong> <span id="cancelarPasajero"></span></p>
+                <div class="mb-3">
+                    <label class="form-label">Motivo</label>
+                    <select name="motivo" class="form-select" required>
+                        @foreach (var m in Model.Motivos)
+                        {
+                            <option>@m</option>
+                        }
+                    </select>
+                </div>
+                <div class="alert alert-secondary small mb-0" id="cancelarInfo"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Volver</button>
+                <button type="submit" class="btn btn-danger">Cancelar reserva</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('modalCobrar').addEventListener('show.bs.modal', function (ev) {
+            const d = ev.relatedTarget.dataset;
+            document.getElementById('cobrarId').value = d.id;
+            document.getElementById('cobrarCodigo').textContent = d.codigo;
+            document.getElementById('cobrarPasajero').textContent = d.pasajero;
+            document.getElementById('cobrarTotal').textContent = d.total;
+        });
+
+        document.getElementById('modalCancelar').addEventListener('show.bs.modal', function (ev) {
+            const d = ev.relatedTarget.dataset;
+            document.getElementById('cancelarId').value = d.id;
+            document.getElementById('cancelarCodigo').textContent = d.codigo;
+            document.getElementById('cancelarPasajero').textContent = d.pasajero;
+            document.getElementById('cancelarInfo').textContent = parseFloat(d.pagado) > 0
+                ? 'Se pagaron S/ ' + d.pagado + '. Según la política, se devuelve el ' + d.pct + '% (S/ ' + d.devolucion + ').'
+                : 'Esta reserva no tiene pagos, por lo que no hay nada que devolver.';
+        });
+    </script>
+}

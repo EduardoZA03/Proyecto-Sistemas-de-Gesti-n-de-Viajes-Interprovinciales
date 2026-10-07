@@ -1,53 +1,129 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using WebApplication1.Data;
+using WebApplication1.Models;
 using WebApplication1.Models.ViewModels;
 
 namespace WebApplication1.Controllers
 {
     public class CancelacionesController : Controller
     {
-        public IActionResult Index()
+        private readonly ChaskiRutaContext _db;
+
+        public CancelacionesController(ChaskiRutaContext db) => _db = db;
+
+        public async Task<IActionResult> Index()
         {
-            var model = new CancelacionesIndexVM
+            var filtros = new CancelacionesIndexVM
             {
                 FechaInicio = DateTime.Today.AddDays(-14),
-                FechaFin = DateTime.Today,
-                TotalCancelaciones = 28,
-                MontoDevuelto = 2450.00m,
-                PenalidadesAplicadas = 650.00m,
-                CancelacionesHoy = 5,
-                Cancelaciones = DatosPrueba()
+                FechaFin = DateTime.Today
             };
-            return View(model);
+            return View(await ConstruirAsync(filtros));
         }
 
         [HttpPost]
-        public IActionResult Index(CancelacionesIndexVM filtros)
+        public async Task<IActionResult> Index(CancelacionesIndexVM filtros)
         {
-            filtros.TotalCancelaciones = 28;
-            filtros.MontoDevuelto = 2450.00m;
-            filtros.PenalidadesAplicadas = 650.00m;
-            filtros.CancelacionesHoy = 5;
-            filtros.Cancelaciones = DatosPrueba();
-            return View(filtros);
+            return View(await ConstruirAsync(filtros));
         }
 
         [HttpGet]
-        public IActionResult Detalle(string codigo)
+        public async Task<IActionResult> Detalle(string codigo)
         {
-            var c = DatosPrueba().FirstOrDefault(x => x.Codigo == codigo);
+            var id = Formato.IdDeCodigo(codigo);
+            var c = id is null
+                ? null
+                : (await ProyectarAsync(_db.Cancelaciones.AsNoTracking().Where(x => x.IdCancelacion == id))).FirstOrDefault();
             return PartialView("_DetalleCancelacion", c);
         }
 
-        private List<CancelacionVM> DatosPrueba()
+        private async Task<CancelacionesIndexVM> ConstruirAsync(CancelacionesIndexVM f)
         {
-            return new List<CancelacionVM>
+            var q = _db.Cancelaciones.AsNoTracking().AsQueryable();
+
+            if (f.FechaInicio is { } ini)
+            {
+                var desde = ini.Date;
+                q = q.Where(c => c.FechaCancelacion >= desde);
+            }
+            if (f.FechaFin is { } fin)
+            {
+                var hasta = fin.Date.AddDays(1);
+                q = q.Where(c => c.FechaCancelacion < hasta);
+            }
+            if (Formato.FiltroOpcional(f.Estado) is { } estado)
+                q = q.Where(c => c.Estado == estado);
+            if (Formato.FiltroOpcional(f.Motivo) is { } motivo)
+                q = q.Where(c => c.Motivo == motivo);
+            if (!string.IsNullOrWhiteSpace(f.CodigoBusqueda))
+            {
+                var texto = f.CodigoBusqueda.Trim();
+                var id = Formato.IdDeCodigo(texto);
+                q = q.Where(c => c.Reserva.CodigoReserva.Contains(texto)
+                    || (id != null && c.IdCancelacion == id)
+                    || c.Reserva.Pasajeros.Any(x =>
+                        (x.Nombres + " " + x.Apellidos).Contains(texto) || x.NroDocumento.Contains(texto)));
+            }
+            if (!string.IsNullOrWhiteSpace(f.Pasajero))
+            {
+                var texto = f.Pasajero.Trim();
+                q = q.Where(c => c.Reserva.Pasajeros.Any(x =>
+                    (x.Nombres + " " + x.Apellidos).Contains(texto) || x.NroDocumento.Contains(texto)));
+            }
+
+            f.TotalCancelaciones = await q.CountAsync();
+            f.MontoDevuelto = await q.SumAsync(c => (decimal?)c.MontoReembolso) ?? 0m;
+            // Penalidad = lo que se había pagado menos lo que se devuelve
+            f.PenalidadesAplicadas = await q.SumAsync(c => (decimal?)(
+                c.Reserva.Pagos.Where(p => p.Estado == "Pagado").Sum(p => p.Monto) - c.MontoReembolso)) ?? 0m;
+
+            var hoy = DateTime.Today;
+            var manana = hoy.AddDays(1);
+            f.CancelacionesHoy = await _db.Cancelaciones
+                .CountAsync(c => c.FechaCancelacion >= hoy && c.FechaCancelacion < manana);
+
+            f.Cancelaciones = await ProyectarAsync(q.OrderByDescending(c => c.FechaCancelacion));
+            return f;
+        }
+
+        private static async Task<List<CancelacionVM>> ProyectarAsync(IQueryable<Cancelacion> q)
         {
-            new() { Codigo="CAN-00028", FechaCancelacion=new DateTime(2026,5,15,9,30,0), CodigoReserva="RES-000156", Pasajero="Juan Carlos Pérez", Documento="12345678", Ruta="Lima - Arequipa (Ejecutivo)", FechaViaje=new DateTime(2026,5,15,8,0,0), MontoTotal=70, Devolucion=70, Penalidad=0, Motivo="Cambio de planes", Estado="Reembolsado" },
-            new() { Codigo="CAN-00027", FechaCancelacion=new DateTime(2026,5,15,8,15,0), CodigoReserva="RES-000155", Pasajero="María López García", Documento="87654321", Ruta="Lima - Cusco (Semi Cama)", FechaViaje=new DateTime(2026,5,16,10,30,0), MontoTotal=85, Devolucion=68, Penalidad=17, Motivo="Cambio de planes", Estado="Reembolsado" },
-            new() { Codigo="CAN-00026", FechaCancelacion=new DateTime(2026,5,14,19,45,0), CodigoReserva="RES-000154", Pasajero="Pedro Ramírez Soto", Documento="11223344", Ruta="Lima - Trujillo (Ejecutivo)", FechaViaje=new DateTime(2026,5,14,23,59,0), MontoTotal=60, Devolucion=0, Penalidad=60, Motivo="Cambio de planes", Estado="Sin devolución" },
-            new() { Codigo="CAN-00025", FechaCancelacion=new DateTime(2026,5,14,18,20,0), CodigoReserva="RES-000153", Pasajero="Ana Torres Medina", Documento="22334455", Ruta="Lima - Chiclayo (Semi Cama)", FechaViaje=new DateTime(2026,5,15,18,40,0), MontoTotal=110, Devolucion=88, Penalidad=22, Motivo="Cambio de planes", Estado="Reembolsado" },
-            new() { Codigo="CAN-00024", FechaCancelacion=new DateTime(2026,5,14,17,10,0), CodigoReserva="RES-000152", Pasajero="Luis Mendoza Vargas", Documento="33445566", Ruta="Lima - Piura (Ejecutivo)", FechaViaje=new DateTime(2026,5,14,17,20,0), MontoTotal=70, Devolucion=70, Penalidad=0, Motivo="Cambio de planes", Estado="Reembolsado" },
-        };
+            var filas = await q.Select(c => new
+            {
+                c.IdCancelacion,
+                c.FechaCancelacion,
+                c.Motivo,
+                c.MontoReembolso,
+                c.Estado,
+                CodigoReserva = c.Reserva.CodigoReserva,
+                Total = c.Reserva.Total,
+                Pagado = c.Reserva.Pagos.Where(p => p.Estado == "Pagado").Sum(p => p.Monto),
+                Pasajero = c.Reserva.Pasajeros.OrderBy(x => x.IdPasajero)
+                            .Select(x => new { x.Nombres, x.Apellidos, x.NroDocumento })
+                            .FirstOrDefault(),
+                Origen = c.Reserva.Viaje.Ruta.Origen.NombreCiudad,
+                Destino = c.Reserva.Viaje.Ruta.Destino.NombreCiudad,
+                Servicio = c.Reserva.Viaje.Bus.Servicio,
+                c.Reserva.Viaje.FechaSalida,
+                c.Reserva.Viaje.HoraSalida
+            }).ToListAsync();
+
+            return filas.Select(x => new CancelacionVM
+            {
+                Codigo = Formato.CodigoCancelacion(x.IdCancelacion),
+                FechaCancelacion = x.FechaCancelacion,
+                CodigoReserva = x.CodigoReserva,
+                Pasajero = x.Pasajero is null ? "(sin pasajero)" : $"{x.Pasajero.Nombres} {x.Pasajero.Apellidos}",
+                Documento = x.Pasajero?.NroDocumento ?? string.Empty,
+                Ruta = $"{x.Origen} - {x.Destino} ({x.Servicio})",
+                FechaViaje = x.FechaSalida.Add(x.HoraSalida),
+                MontoTotal = x.Total,
+                Devolucion = x.MontoReembolso,
+                Penalidad = x.Pagado - x.MontoReembolso,
+                Motivo = x.Motivo,
+                Estado = x.Estado
+            }).ToList();
         }
     }
 }
