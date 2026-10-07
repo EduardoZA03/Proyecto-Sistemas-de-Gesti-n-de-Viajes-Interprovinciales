@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using WebApplication1.Data;
 using WebApplication1.Models;
 using WebApplication1.Models.ViewModels;
@@ -15,8 +16,13 @@ namespace WebApplication1.Controllers
         private const string MensajeCredenciales = "ID o contraseña incorrectos.";
 
         private readonly ChaskiRutaContext _db;
+        private readonly IMemoryCache _cache;
 
-        public CuentaController(ChaskiRutaContext db) => _db = db;
+        public CuentaController(ChaskiRutaContext db, IMemoryCache cache)
+        {
+            _db = db;
+            _cache = cache;
+        }
 
         [AllowAnonymous, HttpGet]
         public IActionResult Login(string? returnUrl)
@@ -97,6 +103,7 @@ namespace WebApplication1.Controllers
             usuario.BloqueadoHasta = null;
             usuario.UltimoAcceso = ahora;
             await _db.SaveChangesAsync();
+            _cache.InvalidarSesion(usuario.IdUsuario);
 
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, Seguridad.CrearPrincipal(usuario));
 
@@ -185,7 +192,7 @@ namespace WebApplication1.Controllers
             }
 
             TempData["Mensaje"] = $"Cuenta «{usuario.NombreUsuario}» creada con el rol {model.Rol}.";
-            return RedirectToAction(nameof(Registro));
+            return RedirectToAction("Index", "Usuarios");
         }
     }
 }
