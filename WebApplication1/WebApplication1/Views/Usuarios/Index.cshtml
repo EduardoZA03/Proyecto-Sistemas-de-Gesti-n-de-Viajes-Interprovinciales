@@ -1,0 +1,209 @@
+@model UsuariosIndexVM
+@{
+    ViewData["Title"] = "Usuarios";
+}
+
+<nav class="text-muted small mb-2">INICIO &gt; <span class="text-dark fw-bold">USUARIOS</span></nav>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0"><i class="fa-solid fa-users me-2"></i>Usuarios</h4>
+    <a asp-controller="Cuenta" asp-action="Registro" class="btn chaski-btn-primary px-4">
+        <i class="fa-solid fa-user-plus me-1"></i> Nueva cuenta
+    </a>
+</div>
+
+@if (TempData["Mensaje"] != null)
+{
+    <div class="alert alert-success">@TempData["Mensaje"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<!-- RESUMEN -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card kpi-card h-100">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">CUENTAS ACTIVAS</div>
+                    <div class="fs-3 fw-bold">@Model.Activas</div>
+                </div>
+                <i class="fa-solid fa-user-check fa-2x text-success"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card kpi-card h-100">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">BLOQUEADAS AHORA</div>
+                    <div class="fs-3 fw-bold">@Model.Bloqueadas</div>
+                </div>
+                <i class="fa-solid fa-lock fa-2x text-warning"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card kpi-card kpi-danger h-100">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small">INACTIVAS</div>
+                    <div class="fs-3 fw-bold">@Model.Inactivas</div>
+                </div>
+                <i class="fa-solid fa-user-slash fa-2x text-danger"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FILTROS -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form asp-action="Index" method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Rol</label>
+                <select name="rol" class="form-select">
+                    @foreach (var op in new[] { "Todos", "Administrador", "Vendedor", "Cliente" })
+                    {
+                        <option value="@op" selected="@(Model.Rol == op)">@op</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Estado</label>
+                <select name="estado" class="form-select">
+                    @foreach (var op in new[] { "Todos", "Activo", "Inactivo" })
+                    {
+                        <option value="@op" selected="@(Model.Estado == op)">@op</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">ID, nombre, DNI o correo</label>
+                <input name="texto" value="@Model.Texto" class="form-control" placeholder="Buscar..." />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn chaski-btn-primary w-100">
+                    <i class="fa-solid fa-magnifying-glass me-1"></i> Buscar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- LISTADO -->
+<div class="card">
+    <div class="card-body">
+        <h6 class="fw-bold text-teal mb-3">LISTADO DE CUENTAS <span class="text-muted fw-normal">(@Model.Usuarios.Count)</span></h6>
+        <div class="table-responsive">
+            <table class="table align-middle table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Persona</th>
+                        <th>Rol</th>
+                        <th>Último acceso</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in Model.Usuarios)
+                    {
+                        var rolBadge = u.Rol switch
+                        {
+                            "Administrador" => "bg-primary-subtle text-primary",
+                            "Vendedor" => "bg-info-subtle text-info",
+                            _ => "bg-secondary-subtle text-secondary"
+                        };
+                        <tr>
+                            <td class="fw-semibold text-nowrap">
+                                @u.NombreUsuario
+                                @if (u.EsYo) { <span class="badge bg-success-subtle text-success ms-1">tú</span> }
+                            </td>
+                            <td>@u.NombreCompleto<br /><span class="text-muted small">DNI @u.Dni · @u.Correo</span></td>
+                            <td><span class="badge @rolBadge">@u.Rol</span></td>
+                            <td class="text-nowrap">
+                                @if (u.UltimoAcceso is { } ua)
+                                {
+                                    @ua.ToString("dd/MM/yyyy")<br /><span class="text-muted small">@ua.ToString("HH:mm")</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Nunca</span>
+                                }
+                            </td>
+                            <td>
+                                @if (u.Estado != "Activo")
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary">Inactiva</span>
+                                }
+                                else if (u.Bloqueada)
+                                {
+                                    <span class="badge bg-warning-subtle text-warning"><i class="fa-solid fa-lock me-1"></i>Bloqueada hasta @u.BloqueadoHasta!.Value.ToString("HH:mm")</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success-subtle text-success">Activa</span>
+                                    @if (u.IntentosFallidos > 0)
+                                    {
+                                        <br /><span class="text-muted small">@u.IntentosFallidos intento(s) fallido(s)</span>
+                                    }
+                                }
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Editar" asp-route-id="@u.IdUsuario" class="btn btn-sm btn-outline-secondary" title="Editar datos y rol">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                @if (!u.EsYo)
+                                {
+                                    <a asp-action="Clave" asp-route-id="@u.IdUsuario" class="btn btn-sm btn-outline-secondary" title="Restablecer contraseña">
+                                        <i class="fa-solid fa-key"></i>
+                                    </a>
+                                }
+                                @if (u.PuedeDesbloquear)
+                                {
+                                    <form asp-action="Desbloquear" asp-route-id="@u.IdUsuario" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-warning" title="Desbloquear y limpiar intentos fallidos">
+                                            <i class="fa-solid fa-lock-open"></i>
+                                        </button>
+                                    </form>
+                                }
+                                @if (!u.EsYo)
+                                {
+                                    if (u.Estado == "Activo")
+                                    {
+                                        <form asp-action="CambiarEstado" asp-route-id="@u.IdUsuario" method="post" class="d-inline"
+                                              onsubmit="return confirm('¿Desactivar la cuenta @u.NombreUsuario? Dejará de poder entrar y se cerrará su sesión si la tiene abierta.');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Desactivar cuenta">
+                                                <i class="fa-solid fa-user-slash"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="CambiarEstado" asp-route-id="@u.IdUsuario" method="post" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-success" title="Reactivar cuenta">
+                                                <i class="fa-solid fa-user-check"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Usuarios.Any())
+                    {
+                        <tr><td colspan="6" class="text-center text-muted py-4">No hay cuentas con esos filtros.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="text-muted small mb-0">
+            <i class="fa-solid fa-circle-info me-1"></i>
+            Las cuentas no se eliminan para conservar el historial de reservas: se desactivan.
+            La cuenta de <strong>Cliente</strong> está en espera: aún no puede entrar al panel.
+        </p>
+    </div>
+</div>

@@ -25,9 +25,13 @@ builder.Services.AddControllersWithViews(options =>
 builder.Services.AddDbContext<ChaskiRutaContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ChaskiRuta")));
 
+builder.Services.AddMemoryCache();
+
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
+        // Si la cuenta se desactiva, cambia de rol o de contraseña, la sesión abierta cae enseguida
+        options.Events.OnValidatePrincipal = Seguridad.ValidarSesionAsync;
         options.LoginPath = "/Cuenta/Login";
         options.AccessDeniedPath = "/Cuenta/AccesoDenegado";
         options.Cookie.Name = "ChaskiRuta.Auth";

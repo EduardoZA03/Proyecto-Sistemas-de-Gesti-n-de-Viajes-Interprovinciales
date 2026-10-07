@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using WebApplication1.Data;
 using WebApplication1.Models.ViewModels;
 
@@ -13,8 +14,13 @@ namespace WebApplication1.Controllers
     public class ConfiguracionController : Controller
     {
         private readonly ChaskiRutaContext _db;
+        private readonly IMemoryCache _cache;
 
-        public ConfiguracionController(ChaskiRutaContext db) => _db = db;
+        public ConfiguracionController(ChaskiRutaContext db, IMemoryCache cache)
+        {
+            _db = db;
+            _cache = cache;
+        }
 
         public async Task<IActionResult> Index()
         {
@@ -130,6 +136,10 @@ namespace WebApplication1.Controllers
             {
                 usuario.ContrasenaHash = Seguridad.Hasher.HashPassword(usuario, nueva);
                 await _db.SaveChangesAsync();
+
+                // La contraseña nueva cambia el "sello" de la sesión: se renueva la tuya y caen las demás abiertas
+                _cache.InvalidarSesion(usuario.IdUsuario);
+                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, Seguridad.CrearPrincipal(usuario));
                 TempData["Mensaje"] = "Contraseña actualizada correctamente.";
             }
             return RedirectToAction("Index");

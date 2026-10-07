@@ -1,0 +1,82 @@
+@model UsuarioEditarVM
+@{
+    ViewData["Title"] = "Editar cuenta";
+}
+
+<nav class="text-muted small mb-2">INICIO &gt; <a asp-action="Index" class="text-muted text-decoration-none">USUARIOS</a> &gt; <span class="text-dark fw-bold">EDITAR</span></nav>
+<h4 class="fw-bold mb-4"><i class="fa-solid fa-user-pen me-2"></i>Editar cuenta <span class="text-muted fw-normal">@Model.NombreUsuario</span></h4>
+
+<form asp-action="Editar" asp-route-id="@Model.IdUsuario" method="post" autocomplete="off">
+    <div class="card mb-3" style="max-width: 820px;">
+        <div class="card-body">
+            <h6 class="fw-bold text-teal mb-3">DATOS PERSONALES</h6>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Nombres" class="form-label">Nombres</label>
+                    <input asp-for="Nombres" class="form-control" maxlength="100" />
+                    <span asp-validation-for="Nombres" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Apellidos" class="form-label">Apellidos</label>
+                    <input asp-for="Apellidos" class="form-control" maxlength="100" />
+                    <span asp-validation-for="Apellidos" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Dni" class="form-label">DNI</label>
+                    <input asp-for="Dni" class="form-control" maxlength="8" inputmode="numeric" />
+                    <span asp-validation-for="Dni" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Telefono" class="form-label">Teléfono <span class="text-muted small">(opcional)</span></label>
+                    <input asp-for="Telefono" class="form-control" maxlength="15" inputmode="tel" />
+                    <span asp-validation-for="Telefono" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Correo" class="form-label">Correo</label>
+                    <input asp-for="Correo" type="email" class="form-control" maxlength="100" />
+                    <span asp-validation-for="Correo" class="text-danger small"></span>
+                </div>
+            </div>
+
+            <hr class="my-4" />
+
+            <h6 class="fw-bold text-teal mb-3">ACCESO</h6>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">ID de usuario</label>
+                    <input class="form-control" value="@Model.NombreUsuario" readonly />
+                    <div class="form-text">El ID de acceso no se puede cambiar.</div>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Rol" class="form-label">Rol</label>
+                    @if (Model.EsYo)
+                    {
+                        <select class="form-select" disabled>
+                            <option>@Model.Rol</option>
+                        </select>
+                        <input type="hidden" asp-for="Rol" />
+                        <div class="form-text">No puedes cambiar tu propio rol.</div>
+                    }
+                    else
+                    {
+                        <select asp-for="Rol" class="form-select">
+                            @foreach (var r in Model.RolesDisponibles)
+                            {
+                                <option value="@r" selected="@(Model.Rol == r)">@r</option>
+                            }
+                        </select>
+                        <span asp-validation-for="Rol" class="text-danger small"></span>
+                        <div class="form-text">Si cambias el rol, la persona tendrá que iniciar sesión de nuevo.</div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn chaski-btn-primary px-4">
+            <i class="fa-solid fa-floppy-disk me-1"></i> Guardar cambios
+        </button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+</form>
