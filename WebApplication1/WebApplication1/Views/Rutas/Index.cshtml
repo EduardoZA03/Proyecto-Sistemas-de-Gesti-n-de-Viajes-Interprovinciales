@@ -1,0 +1,131 @@
+@model RutasIndexVM
+@{
+    ViewData["Title"] = "Rutas";
+}
+
+<nav class="text-muted small mb-2">INICIO &gt; <span class="text-dark fw-bold">RUTAS</span></nav>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0"><i class="fa-solid fa-signs-post me-2"></i>Rutas</h4>
+    <a asp-action="Nueva" class="btn chaski-btn-primary px-4">
+        <i class="fa-solid fa-plus me-1"></i> Nueva ruta
+    </a>
+</div>
+
+@if (TempData["Mensaje"] != null)
+{
+    <div class="alert alert-success">@TempData["Mensaje"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<!-- FILTROS -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form asp-action="Index" method="get" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label">Estado</label>
+                <select name="estado" class="form-select">
+                    @foreach (var op in new[] { "Todos", "Activo", "Inactivo" })
+                    {
+                        <option value="@op" selected="@(Model.Estado == op)">@op</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Origen</label>
+                <select name="idOrigen" class="form-select">
+                    @foreach (var c in Model.Ciudades)
+                    {
+                        <option value="@c.Value" selected="@(c.Value == Model.IdOrigen?.ToString())">@c.Text</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Destino</label>
+                <select name="idDestino" class="form-select">
+                    @foreach (var c in Model.Ciudades)
+                    {
+                        <option value="@c.Value" selected="@(c.Value == Model.IdDestino?.ToString())">@c.Text</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn chaski-btn-primary w-100">
+                    <i class="fa-solid fa-magnifying-glass me-1"></i> Buscar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- LISTADO -->
+<div class="card">
+    <div class="card-body">
+        <h6 class="fw-bold text-teal mb-3">LISTADO DE RUTAS <span class="text-muted fw-normal">(@Model.Rutas.Count)</span></h6>
+        <div class="table-responsive">
+            <table class="table align-middle table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ruta</th>
+                        <th>Distancia</th>
+                        <th>Duración</th>
+                        <th>Viajes</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Rutas)
+                    {
+                        <tr>
+                            <td class="fw-semibold text-nowrap">@r.Origen <i class="fa-solid fa-arrow-right-long mx-1 text-muted"></i> @r.Destino</td>
+                            <td class="text-nowrap">@r.DistanciaKm.ToString("0.##") km</td>
+                            <td class="text-nowrap">@r.Duracion</td>
+                            <td class="text-nowrap">
+                                @r.ViajesProximos <span class="text-muted small">por salir</span>
+                                <br /><span class="text-muted small">@r.ViajesTotal en total</span>
+                            </td>
+                            <td>
+                                <span class="badge @(r.Estado == "Activo" ? "bg-success-subtle text-success" : "bg-secondary-subtle text-secondary")">@r.Estado</span>
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Editar" asp-route-id="@r.IdRuta" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fa-solid fa-pen me-1"></i> Editar
+                                </a>
+                                @if (!r.TieneVuelta)
+                                {
+                                    <form asp-action="CrearVuelta" asp-route-id="@r.IdRuta" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary"
+                                                title="Crea @r.Destino - @r.Origen con la misma distancia y duración">
+                                            <i class="fa-solid fa-right-left me-1"></i> Crear vuelta
+                                        </button>
+                                    </form>
+                                }
+                                @if (r.PuedeEliminar)
+                                {
+                                    <form asp-action="Eliminar" asp-route-id="@r.IdRuta" method="post" class="d-inline"
+                                          onsubmit="return confirm('¿Eliminar la ruta @r.Origen - @r.Destino? Esta acción no se puede deshacer.');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="fa-solid fa-trash me-1"></i> Eliminar
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Rutas.Any())
+                    {
+                        <tr><td colspan="6" class="text-center text-muted py-4">No hay rutas con esos filtros.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="text-muted small mb-0">
+            <i class="fa-solid fa-circle-info me-1"></i>
+            Una ruta con viajes registrados no se elimina: se desactiva desde <strong>Editar</strong>.
+            Cada sentido es una ruta aparte (Lima - Cusco y Cusco - Lima); el botón <strong>Crear vuelta</strong> genera la inversa.
+        </p>
+    </div>
+</div>
