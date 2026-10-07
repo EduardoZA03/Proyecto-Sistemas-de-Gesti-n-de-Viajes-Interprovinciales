@@ -42,6 +42,15 @@ namespace WebApplication1.Controllers
         {
             var q = _db.Cancelaciones.AsNoTracking().AsQueryable();
 
+            // Si las fechas vienen invertidas se ordenan y se avisa
+            if (f.FechaInicio is { } a && f.FechaFin is { } z && a.Date > z.Date)
+            {
+                (f.FechaInicio, f.FechaFin) = (f.FechaFin, f.FechaInicio);
+                ModelState.Remove(nameof(f.FechaInicio)); // para que los campos muestren las fechas ya ordenadas
+                ModelState.Remove(nameof(f.FechaFin));
+                ViewData["Aviso"] = "La fecha de inicio era posterior a la fecha fin: se intercambiaron para la búsqueda.";
+            }
+
             if (f.FechaInicio is { } ini)
             {
                 var desde = ini.Date;

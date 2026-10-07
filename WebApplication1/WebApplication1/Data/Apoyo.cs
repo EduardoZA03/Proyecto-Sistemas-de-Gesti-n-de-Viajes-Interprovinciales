@@ -110,6 +110,16 @@ namespace WebApplication1.Data
 
     public static class Formato
     {
+        private static readonly Regex RegexCorreo = new(@"^[^\s@]+@[^\s@]+\.[^\s@]+$", RegexOptions.Compiled);
+
+        // Correo con forma usuario@dominio.ext, hasta 100 caracteres (.NET por sí solo acepta "a@b")
+        public static bool CorreoValido(string? correo) =>
+            !string.IsNullOrWhiteSpace(correo)
+            && correo.Length <= 100
+            && RegexCorreo.IsMatch(correo)
+            && System.Net.Mail.MailAddress.TryCreate(correo, out var m)
+            && m.Address == correo;
+
         public static string CodigoVenta(int idPago) => $"VTA-{idPago:D6}";
         public static string CodigoCancelacion(int idCancelacion) => $"CAN-{idCancelacion:D5}";
 

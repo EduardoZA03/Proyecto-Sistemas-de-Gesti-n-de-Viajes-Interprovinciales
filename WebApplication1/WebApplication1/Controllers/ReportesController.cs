@@ -28,8 +28,15 @@ namespace WebApplication1.Controllers
         {
             var desde = (f.FechaInicio ?? DateTime.Today.AddDays(-14)).Date;
             var hasta = (f.FechaFin ?? DateTime.Today).Date;
+            if (desde > hasta)
+            {
+                (desde, hasta) = (hasta, desde);
+                ViewData["Aviso"] = "La fecha de inicio era posterior a la fecha fin: se intercambiaron para el reporte.";
+            }
             f.FechaInicio = desde;
             f.FechaFin = hasta;
+            ModelState.Remove(nameof(f.FechaInicio)); // para que los campos muestren las fechas ya ordenadas
+            ModelState.Remove(nameof(f.FechaFin));
             var hastaExcl = hasta.AddDays(1);
 
             var ruta = Formato.FiltroOpcional(f.Ruta, "Todas las rutas");

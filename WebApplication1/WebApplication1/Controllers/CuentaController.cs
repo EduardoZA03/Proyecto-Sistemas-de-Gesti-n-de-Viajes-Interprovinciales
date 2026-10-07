@@ -141,6 +141,9 @@ namespace WebApplication1.Controllers
             var correo = model.Correo?.Trim().ToLowerInvariant() ?? string.Empty;
             var dni = model.Dni?.Trim() ?? string.Empty;
 
+            if (ModelState.IsValid && !Formato.CorreoValido(correo))
+                ModelState.AddModelError(nameof(model.Correo), "El correo no es válido (ejemplo: nombre@correo.com).");
+
             if (ModelState.IsValid)
             {
                 if (await _db.Usuarios.AnyAsync(u => u.NombreUsuario == idUsuario))
