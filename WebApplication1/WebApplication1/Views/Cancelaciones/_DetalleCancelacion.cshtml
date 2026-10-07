@@ -15,5 +15,8 @@ else
     <p class="mb-1"><strong>Monto total:</strong> S/ @Model.MontoTotal.ToString("0.00")</p>
     <p class="mb-1"><strong>Devolución:</strong> S/ @Model.Devolucion.ToString("0.00")</p>
     <p class="mb-3"><strong>Penalidad:</strong> S/ @Model.Penalidad.ToString("0.00")</p>
-    <button class="btn chaski-btn-primary w-100"><i class="fa-solid fa-file-invoice me-1"></i> Ver comprobante</button>
+    <a class="btn chaski-btn-primary w-100" target="_blank" rel="noopener"
+       asp-controller="Cancelaciones" asp-action="Comprobante" asp-route-codigo="@Model.Codigo">
+        <i class="fa-solid fa-file-invoice me-1"></i> Ver constancia
+    </a>
 }
