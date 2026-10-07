@@ -1,0 +1,159 @@
+@model BusFormVM
+@{
+    var editando = Model.IdBus.HasValue;
+    ViewData["Title"] = editando ? "Editar bus" : "Nuevo bus";
+}
+
+<nav class="text-muted small mb-2">INICIO &gt; <a asp-action="Index" class="text-muted text-decoration-none">BUSES</a> &gt; <span class="text-dark fw-bold">@(editando ? "EDITAR" : "NUEVO")</span></nav>
+<h4 class="fw-bold mb-4"><i class="fa-solid fa-bus-simple me-2"></i>@(editando ? "Editar bus" : "Registrar un bus")</h4>
+
+<form asp-action="@(editando ? "Editar" : "Nuevo")" asp-route-id="@Model.IdBus" method="post" autocomplete="off">
+    <div class="row">
+        <div class="col-xl-7 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold text-teal mb-3">DATOS DEL BUS</h6>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="Placa" class="form-label">Placa</label>
+                            <input asp-for="Placa" class="form-control text-uppercase" maxlength="7" placeholder="ABC-123" />
+                            <span asp-validation-for="Placa" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Marca" class="form-label">Marca</label>
+                            <input asp-for="Marca" class="form-control" maxlength="50" />
+                            <span asp-validation-for="Marca" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Modelo" class="form-label">Modelo</label>
+                            <input asp-for="Modelo" class="form-control" maxlength="50" />
+                            <span asp-validation-for="Modelo" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Anio" class="form-label">Año</label>
+                            <input asp-for="Anio" type="number" class="form-control" min="1990" />
+                            <span asp-validation-for="Anio" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Servicio" class="form-label">Tipo de servicio</label>
+                            <select asp-for="Servicio" class="form-select">
+                                <option value="">— Elige —</option>
+                                @foreach (var s in new[] { "Ejecutivo", "Semi Cama", "Cama Suite" })
+                                {
+                                    <option value="@s" selected="@(Model.Servicio == s)">@s</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Servicio" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Estado" class="form-label">Estado</label>
+                            <select asp-for="Estado" class="form-select">
+                                @foreach (var s in new[] { "Operativo", "Mantenimiento", "Baja" })
+                                {
+                                    <option value="@s" selected="@(Model.Estado == s)">@s</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Estado" class="text-danger small"></span>
+                        </div>
+
+                        @if (Model.Empresas.Count > 1)
+                        {
+                            <div class="col-12">
+                                <label asp-for="IdEmpresa" class="form-label">Empresa</label>
+                                <select asp-for="IdEmpresa" asp-items="Model.Empresas" class="form-select"></select>
+                                <span asp-validation-for="IdEmpresa" class="text-danger small"></span>
+                            </div>
+                        }
+                        else
+                        {
+                            <input type="hidden" asp-for="IdEmpresa" />
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-5 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold text-teal mb-3">ASIENTOS</h6>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label asp-for="Capacidad" class="form-label">Cantidad de asientos</label>
+                            <input asp-for="Capacidad" id="capacidad" type="number" class="form-control" min="10" max="80"
+                                   readonly="@(!Model.CapacidadEditable)" />
+                            <span asp-validation-for="Capacidad" class="text-danger small"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="Pisos" class="form-label">Pisos</label>
+                            <select asp-for="Pisos" id="pisos" class="form-select" disabled="@(!Model.CapacidadEditable)">
+                                <option value="1" selected="@(Model.Pisos == 1)">1 piso</option>
+                                <option value="2" selected="@(Model.Pisos == 2)">2 pisos</option>
+                            </select>
+                            @if (!Model.CapacidadEditable)
+                            {
+                                <input type="hidden" asp-for="Pisos" />
+                            }
+                            <span asp-validation-for="Pisos" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    @if (!Model.CapacidadEditable)
+                    {
+                        <div class="alert alert-light border small mt-3 mb-0">
+                            <i class="fa-solid fa-lock me-1"></i>
+                            Este bus tiene <strong>@Model.ViajesTotal viaje(s)</strong> registrados, por eso la cantidad de asientos y los pisos ya no se pueden cambiar.
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted small mt-3 mb-2">Los asientos se generan solos, numerados desde el 01.</p>
+                        <div id="vistaAsientos" class="d-flex flex-wrap gap-1"></div>
+                        <div class="small text-muted mt-2" id="resumenAsientos"></div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn chaski-btn-primary px-4">
+            <i class="fa-solid fa-floppy-disk me-1"></i> @(editando ? "Guardar cambios" : "Registrar bus")
+        </button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        (function () {
+            // La placa se escribe siempre en mayúsculas
+            var placa = document.getElementById('Placa');
+            placa.addEventListener('input', function () { placa.value = placa.value.toUpperCase(); });
+
+            // Vista previa de los asientos que se van a generar
+            var cap = document.getElementById('capacidad'), pisos = document.getElementById('pisos');
+            var vista = document.getElementById('vistaAsientos'), resumen = document.getElementById('resumenAsientos');
+            if (!vista) return;
+            function dibujar() {
+                var n = parseInt(cap.value, 10);
+                vista.innerHTML = '';
+                if (isNaN(n) || n < 10 || n > 80) { resumen.textContent = 'Ingresa entre 10 y 80 asientos.'; return; }
+                var p1 = pisos.value === '2' ? Math.round(n * 0.3) : n;
+                for (var i = 1; i <= n; i++) {
+                    var d = document.createElement('div');
+                    d.className = 'seat ' + (i <= p1 ? 'seat-disponible' : 'seat-ocupado');
+                    d.style.cssText = 'width:30px;height:30px;font-size:.7rem;cursor:default';
+                    d.textContent = (i < 10 ? '0' : '') + i;
+                    vista.appendChild(d);
+                }
+                resumen.textContent = pisos.value === '2'
+                    ? p1 + ' asientos en el piso 1 (verde) y ' + (n - p1) + ' en el piso 2 (gris).'
+                    : n + ' asientos en 1 piso.';
+            }
+            cap.addEventListener('input', dibujar);
+            pisos.addEventListener('change', dibujar);
+            dibujar();
+        })();
+    </script>
+}
