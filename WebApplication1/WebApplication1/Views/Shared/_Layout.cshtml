@@ -78,6 +78,18 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Rutas" ? "active" : "")"
+                           asp-controller="Rutas" asp-action="Index">
+                            <i class="fa-solid fa-signs-post me-2"></i> Rutas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Ciudades" ? "active" : "")"
+                           asp-controller="Ciudades" asp-action="Index">
+                            <i class="fa-solid fa-city me-2"></i> Ciudades
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Buses" ? "active" : "")"
                            asp-controller="Buses" asp-action="Index">
                             <i class="fa-solid fa-bus-simple me-2"></i> Buses

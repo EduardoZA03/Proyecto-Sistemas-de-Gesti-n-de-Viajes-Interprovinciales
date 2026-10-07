@@ -1,0 +1,112 @@
+@model CiudadesIndexVM
+@{
+    ViewData["Title"] = "Ciudades";
+}
+
+<nav class="text-muted small mb-2">INICIO &gt; <span class="text-dark fw-bold">CIUDADES</span></nav>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0"><i class="fa-solid fa-city me-2"></i>Ciudades</h4>
+    <a asp-action="Nueva" class="btn chaski-btn-primary px-4">
+        <i class="fa-solid fa-plus me-1"></i> Nueva ciudad
+    </a>
+</div>
+
+@if (TempData["Mensaje"] != null)
+{
+    <div class="alert alert-success">@TempData["Mensaje"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<!-- FILTROS -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form asp-action="Index" method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Estado</label>
+                <select name="estado" class="form-select">
+                    @foreach (var op in new[] { "Todos", "Activo", "Inactivo" })
+                    {
+                        <option value="@op" selected="@(Model.Estado == op)">@op</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Departamento</label>
+                <select name="departamento" class="form-select">
+                    <option value="Todos">Todos</option>
+                    @foreach (var dep in WebApplication1.Data.Departamentos.Todos)
+                    {
+                        <option value="@dep" selected="@(Model.Departamento == dep)">@dep</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Nombre</label>
+                <input name="texto" value="@Model.Texto" class="form-control" placeholder="Buscar ciudad..." />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn chaski-btn-primary w-100">
+                    <i class="fa-solid fa-magnifying-glass me-1"></i> Buscar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- LISTADO -->
+<div class="card">
+    <div class="card-body">
+        <h6 class="fw-bold text-teal mb-3">LISTADO DE CIUDADES <span class="text-muted fw-normal">(@Model.Ciudades.Count)</span></h6>
+        <div class="table-responsive">
+            <table class="table align-middle table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ciudad</th>
+                        <th>Departamento</th>
+                        <th>Rutas</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model.Ciudades)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@c.Nombre</td>
+                            <td>@c.Departamento</td>
+                            <td class="text-nowrap">@c.RutasActivas <span class="text-muted small">activas · @c.RutasTotal en total</span></td>
+                            <td>
+                                <span class="badge @(c.Estado == "Activo" ? "bg-success-subtle text-success" : "bg-secondary-subtle text-secondary")">@c.Estado</span>
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Editar" asp-route-id="@c.IdCiudad" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fa-solid fa-pen me-1"></i> Editar
+                                </a>
+                                @if (c.PuedeEliminar)
+                                {
+                                    <form asp-action="Eliminar" asp-route-id="@c.IdCiudad" method="post" class="d-inline"
+                                          onsubmit="return confirm('¿Eliminar la ciudad @c.Nombre? Esta acción no se puede deshacer.');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="fa-solid fa-trash me-1"></i> Eliminar
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Ciudades.Any())
+                    {
+                        <tr><td colspan="5" class="text-center text-muted py-4">No hay ciudades con esos filtros.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="text-muted small mb-0">
+            <i class="fa-solid fa-circle-info me-1"></i>
+            Una ciudad que ya se usa en rutas, viajes o terminales no se elimina: se desactiva desde <strong>Editar</strong>.
+        </p>
+    </div>
+</div>

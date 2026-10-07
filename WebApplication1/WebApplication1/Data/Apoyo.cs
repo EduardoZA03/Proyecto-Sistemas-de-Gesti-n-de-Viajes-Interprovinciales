@@ -28,6 +28,32 @@ namespace WebApplication1.Data
         public static readonly string[] Todos = { "Ejecutivo", "Semi Cama", "Cama Suite" };
     }
 
+    // Estado de ciudades y rutas
+    public static class EstadosCatalogo
+    {
+        public const string Activo = "Activo";
+        public const string Inactivo = "Inactivo";
+        public static readonly string[] Todos = { Activo, Inactivo };
+    }
+
+    public static class Departamentos
+    {
+        public static readonly string[] Todos =
+        {
+            "Amazonas", "Áncash", "Apurímac", "Arequipa", "Ayacucho", "Cajamarca", "Callao", "Cusco",
+            "Huancavelica", "Huánuco", "Ica", "Junín", "La Libertad", "Lambayeque", "Lima", "Loreto",
+            "Madre de Dios", "Moquegua", "Pasco", "Piura", "Puno", "San Martín", "Tacna", "Tumbes", "Ucayali"
+        };
+    }
+
+    public static class DuracionRuta
+    {
+        // 15 h 30 min -> "15 h 30 min" ; 15 h -> "15 h" ; 45 min -> "45 min"
+        // (Formato.Duracion sabe leer estos textos)
+        public static string Texto(int horas, int minutos) =>
+            minutos == 0 ? $"{horas} h" : horas == 0 ? $"{minutos} min" : $"{horas} h {minutos} min";
+    }
+
     public static class EstadosBus
     {
         public const string Operativo = "Operativo";

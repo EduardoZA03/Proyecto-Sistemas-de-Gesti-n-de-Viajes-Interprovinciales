@@ -1,0 +1,90 @@
+@model RutaFormVM
+@{
+    var editando = Model.IdRuta.HasValue;
+    var bloqueada = Model.ViajesTotal > 0;
+    ViewData["Title"] = editando ? "Editar ruta" : "Nueva ruta";
+}
+
+<nav class="text-muted small mb-2">INICIO &gt; <a asp-action="Index" class="text-muted text-decoration-none">RUTAS</a> &gt; <span class="text-dark fw-bold">@(editando ? "EDITAR" : "NUEVA")</span></nav>
+<h4 class="fw-bold mb-4"><i class="fa-solid fa-signs-post me-2"></i>@(editando ? "Editar ruta" : "Agregar una ruta")</h4>
+
+<form asp-action="@(editando ? "Editar" : "Nueva")" asp-route-id="@Model.IdRuta" method="post" autocomplete="off">
+    <div class="card mb-3" style="max-width: 820px;">
+        <div class="card-body">
+            <h6 class="fw-bold text-teal mb-3">DATOS DE LA RUTA</h6>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="IdOrigen" class="form-label">Origen</label>
+                    <select asp-for="IdOrigen" asp-items="Model.Ciudades" class="form-select" disabled="@bloqueada"></select>
+                    @if (bloqueada) { <input type="hidden" asp-for="IdOrigen" /> }
+                    <span asp-validation-for="IdOrigen" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="IdDestino" class="form-label">Destino</label>
+                    <select asp-for="IdDestino" asp-items="Model.Ciudades" class="form-select" disabled="@bloqueada"></select>
+                    @if (bloqueada) { <input type="hidden" asp-for="IdDestino" /> }
+                    <span asp-validation-for="IdDestino" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="DistanciaKm" class="form-label">Distancia (km)</label>
+                    <input asp-for="DistanciaKm" class="form-control" inputmode="decimal" placeholder="1010" />
+                    <span asp-validation-for="DistanciaKm" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Horas" class="form-label">Duración: horas</label>
+                    <input asp-for="Horas" type="number" min="0" max="72" class="form-control" />
+                    <span asp-validation-for="Horas" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Minutos" class="form-label">minutos</label>
+                    <input asp-for="Minutos" type="number" min="0" max="59" class="form-control" />
+                    <span asp-validation-for="Minutos" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Estado" class="form-label">Estado</label>
+                    <select asp-for="Estado" class="form-select">
+                        @foreach (var s in new[] { "Activo", "Inactivo" })
+                        {
+                            <option value="@s" selected="@(Model.Estado == s)">@s</option>
+                        }
+                    </select>
+                    <span asp-validation-for="Estado" class="text-danger small"></span>
+                </div>
+            </div>
+
+            <div class="text-muted small mt-3" id="vistaDuracion"></div>
+
+            @if (bloqueada)
+            {
+                <div class="alert alert-light border small mt-3 mb-0">
+                    <i class="fa-solid fa-lock me-1"></i>
+                    Esta ruta tiene <strong>@Model.ViajesTotal viaje(s)</strong> registrados, por eso el origen y el destino ya no se pueden cambiar.
+                    La distancia, la duración y el estado sí.
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn chaski-btn-primary px-4">
+            <i class="fa-solid fa-floppy-disk me-1"></i> @(editando ? "Guardar cambios" : "Agregar ruta")
+        </button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        (function () {
+            var h = document.getElementById('Horas'), m = document.getElementById('Minutos'), v = document.getElementById('vistaDuracion');
+            function mostrar() {
+                var hh = parseInt(h.value, 10), mm = parseInt(m.value, 10) || 0;
+                if (isNaN(hh)) { v.textContent = ''; return; }
+                v.textContent = 'Se guardará como: ' + (mm === 0 ? hh + ' h' : hh === 0 ? mm + ' min' : hh + ' h ' + mm + ' min');
+            }
+            h.addEventListener('input', mostrar);
+            m.addEventListener('input', mostrar);
+            mostrar();
+        })();
+    </script>
+}
