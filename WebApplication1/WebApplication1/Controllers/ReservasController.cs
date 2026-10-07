@@ -176,15 +176,20 @@ namespace WebApplication1.Controllers
         }
 
         [HttpGet]
-        public IActionResult Nueva()
+        public async Task<IActionResult> Nueva()
         {
-            return View(new NuevaReservaVM());
+            var model = new NuevaReservaVM();
+            await CargarCiudadesAsync(model);
+            return View(model);
         }
 
         [HttpPost]
         public async Task<IActionResult> BuscarViajes(NuevaReservaVM model)
         {
             model.ViajesDisponibles = await BuscarAsync(model);
+            if (!model.ViajesDisponibles.Any())
+                model.AvisoBusqueda = await ExplicarSinResultadosAsync(model);
+            await CargarCiudadesAsync(model);
             return View("Nueva", model);
         }
 
@@ -194,7 +199,11 @@ namespace WebApplication1.Controllers
             // Volvemos a cargar los viajes para que la tabla siga visible
             model.ViajesDisponibles = await BuscarAsync(model);
             if (model.IdViajeSeleccionado is { } idViaje)
+            {
                 model.Asientos = await AsientosAsync(idViaje);
+                model.ViajeSeleccionado = await ResumenViajeAsync(idViaje);
+            }
+            await CargarCiudadesAsync(model);
             return View("Nueva", model);
         }
 
@@ -205,7 +214,11 @@ namespace WebApplication1.Controllers
             {
                 ViewData["Error"] = mensaje;
                 if (model.IdViajeSeleccionado is { } id)
+                {
                     model.Asientos = await AsientosAsync(id);
+                    model.ViajeSeleccionado = await ResumenViajeAsync(id);
+                }
+                await CargarCiudadesAsync(model);
                 return View("Nueva", model);
             }
 
@@ -232,6 +245,8 @@ namespace WebApplication1.Controllers
                     .FirstOrDefaultAsync(v => v.IdViaje == idViaje && v.Estado == "Programado");
                 if (viaje is null)
                     return await Fallo("El viaje ya no está disponible.");
+                if (PoliticaCancelacion.YaSalio(viaje))
+                    return await Fallo("Ese viaje ya salió; no se pueden registrar más reservas en él.");
 
                 var asiento = await _db.Asientos
                     .FirstOrDefaultAsync(a => a.IdAsiento == idAsiento && a.IdBus == viaje.IdBus);
@@ -299,13 +314,14 @@ namespace WebApplication1.Controllers
             }
         }
 
-        private async Task<List<ViajeDisponibleVM>> BuscarAsync(NuevaReservaVM m)
+        // Viajes que se pueden reservar: programados, con bus operativo, que aún no salieron y con asientos libres
+        private async Task<List<ViajeDisponibleVM>> BuscarAsync(NuevaReservaVM m, bool ignorarFecha = false)
         {
             var hoy = DateTime.Today;
             var q = _db.Viajes.AsNoTracking()
                 .Where(v => v.Estado == "Programado" && v.Bus.Estado == "Operativo");
 
-            if (m.FechaViaje is { } fecha)
+            if (!ignorarFecha && m.FechaViaje is { } fecha)
             {
                 var dia = fecha.Date;
                 q = q.Where(v => v.FechaSalida == dia);
@@ -317,54 +333,102 @@ namespace WebApplication1.Controllers
 
             var origen = m.Origen?.Trim();
             if (!string.IsNullOrEmpty(origen))
-                q = q.Where(v => v.Ruta.Origen.NombreCiudad.Contains(origen));
+                q = q.Where(v => v.Ruta.Origen.NombreCiudad == origen);
             var destino = m.Destino?.Trim();
             if (!string.IsNullOrEmpty(destino))
-                q = q.Where(v => v.Ruta.Destino.NombreCiudad.Contains(destino));
-
-            var filas = await q.OrderBy(v => v.FechaSalida).ThenBy(v => v.HoraSalida)
-                .Select(v => new
-                {
-                    v.IdViaje,
-                    v.FechaSalida,
-                    v.HoraSalida,
-                    v.Bus.Servicio,
-                    Empresa = v.Bus.Empresa.RazonSocial,
-                    v.Ruta.DuracionEstimada,
-                    v.PrecioBase,
-                    PrecioMinimo = v.Tarifas.Where(t => t.Estado == "Activo").Min(t => (decimal?)t.Precio),
-                    Capacidad = v.Bus.CapacidadAsientos,
-                    Vendidos = v.Reservas.Where(r => r.Estado != "Cancelada").Sum(r => r.ReservaAsientos.Count)
-                })
-                .ToListAsync();
+                q = q.Where(v => v.Ruta.Destino.NombreCiudad == destino);
 
             var pasajeros = Math.Max(m.Pasajeros, 1);
-            var conFecha = m.FechaViaje is null; // si no filtró por fecha, mostramos el día de cada viaje
+            var ahora = DateTime.Now;
+            var viajes = await ProyectarViajesAsync(
+                q.OrderBy(v => v.FechaSalida).ThenBy(v => v.HoraSalida),
+                mostrarFecha: ignorarFecha || m.FechaViaje is null);
 
-            return filas
-                .Where(x => x.Capacidad - x.Vendidos >= pasajeros)
-                .Select(x =>
+            // Un viaje de hoy cuya hora ya pasó no se puede reservar
+            return viajes.Where(x => x.Salida > ahora && x.AsientosDisponibles >= pasajeros).ToList();
+        }
+
+        // Datos del viaje elegido, sin aplicar los filtros de la búsqueda
+        private async Task<ViajeDisponibleVM?> ResumenViajeAsync(int idViaje) =>
+            (await ProyectarViajesAsync(_db.Viajes.AsNoTracking().Where(v => v.IdViaje == idViaje), mostrarFecha: true))
+            .FirstOrDefault();
+
+        private async Task<List<ViajeDisponibleVM>> ProyectarViajesAsync(IQueryable<Viaje> q, bool mostrarFecha)
+        {
+            var filas = await q.Select(v => new
+            {
+                v.IdViaje,
+                Origen = v.Ruta.Origen.NombreCiudad,
+                Destino = v.Ruta.Destino.NombreCiudad,
+                v.FechaSalida,
+                v.HoraSalida,
+                v.Bus.Servicio,
+                Empresa = v.Bus.Empresa.RazonSocial,
+                v.Ruta.DuracionEstimada,
+                v.PrecioBase,
+                PrecioMinimo = v.Tarifas.Where(t => t.Estado == "Activo").Min(t => (decimal?)t.Precio),
+                Capacidad = v.Bus.CapacidadAsientos,
+                Vendidos = v.Reservas.Where(r => r.Estado != "Cancelada").Sum(r => r.ReservaAsientos.Count)
+            }).ToListAsync();
+
+            return filas.Select(x =>
+            {
+                var salida = x.FechaSalida.Add(x.HoraSalida);
+                var duracion = Formato.Duracion(x.DuracionEstimada);
+                string llegada = "--";
+                if (duracion is { } d)
                 {
-                    var salida = x.FechaSalida.Add(x.HoraSalida);
-                    var duracion = Formato.Duracion(x.DuracionEstimada);
-                    string llegada = "--";
-                    if (duracion is { } d)
-                    {
-                        var fin = salida.Add(d);
-                        llegada = Formato.Hora12(fin) + (fin.Date > salida.Date ? $" (+{(fin.Date - salida.Date).Days}d)" : "");
-                    }
-                    return new ViajeDisponibleVM
-                    {
-                        IdViaje = x.IdViaje,
-                        Servicio = x.Servicio,
-                        Empresa = x.Empresa,
-                        HoraSalida = (conFecha ? salida.ToString("dd/MM ") : "") + Formato.Hora12(salida),
-                        HoraLlegada = llegada,
-                        Duracion = x.DuracionEstimada,
-                        PrecioDesde = x.PrecioMinimo ?? x.PrecioBase,
-                        AsientosDisponibles = x.Capacidad - x.Vendidos
-                    };
-                })
+                    var fin = salida.Add(d);
+                    llegada = Formato.Hora12(fin) + (fin.Date > salida.Date ? $" (+{(fin.Date - salida.Date).Days}d)" : "");
+                }
+                return new ViajeDisponibleVM
+                {
+                    IdViaje = x.IdViaje,
+                    Ruta = $"{x.Origen} - {x.Destino}",
+                    Salida = salida,
+                    Servicio = x.Servicio,
+                    Empresa = x.Empresa,
+                    HoraSalida = (mostrarFecha ? salida.ToString("dd/MM ") : "") + Formato.Hora12(salida),
+                    HoraLlegada = llegada,
+                    Duracion = x.DuracionEstimada,
+                    PrecioDesde = x.PrecioMinimo ?? x.PrecioBase,
+                    AsientosDisponibles = x.Capacidad - x.Vendidos
+                };
+            }).ToList();
+        }
+
+        // Mensaje claro cuando la búsqueda no encuentra nada, con las fechas que sí tienen viajes
+        private async Task<string> ExplicarSinResultadosAsync(NuevaReservaVM m)
+        {
+            var ruta = (string.IsNullOrWhiteSpace(m.Origen), string.IsNullOrWhiteSpace(m.Destino)) switch
+            {
+                (false, false) => $" de {m.Origen} a {m.Destino}",
+                (false, true) => $" desde {m.Origen}",
+                (true, false) => $" hacia {m.Destino}",
+                _ => string.Empty
+            };
+
+            if (m.FechaViaje is { } fecha)
+            {
+                var otras = await BuscarAsync(m, ignorarFecha: true);
+                if (otras.Any())
+                    return $"No hay viajes{ruta} el {fecha:dd/MM/yyyy}. Sí hay en estas fechas: " +
+                           string.Join(", ", otras.Take(5).Select(o => o.Salida.ToString("dd/MM HH:mm"))) +
+                           ". Cambia la fecha o déjala vacía.";
+                return $"No hay viajes programados{ruta} con asientos disponibles.";
+            }
+            return $"No hay viajes programados{ruta} con asientos disponibles.";
+        }
+
+        // Ciudades para los desplegables de origen y destino
+        private async Task CargarCiudadesAsync(NuevaReservaVM m)
+        {
+            m.Ciudades = (await _db.Ciudades.AsNoTracking()
+                    .Where(c => c.Estado == "Activo")
+                    .OrderBy(c => c.NombreCiudad)
+                    .Select(c => c.NombreCiudad)
+                    .ToListAsync())
+                .Select(n => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem(n, n))
                 .ToList();
         }
 

@@ -23,6 +23,17 @@ namespace WebApplication1.Data
         public static readonly string[] Todos = { "Efectivo", "Tarjeta", "Yape", "Plin", "Transferencia" };
     }
 
+    // Las 4 tarifas que se generan para cada viaje: porcentaje del precio base
+    public static class TarifasEstandar
+    {
+        public static readonly (string Tipo, decimal Factor)[] Todas =
+        {
+            ("General", 1.00m), ("Estudiante", 0.80m), ("Tercera Edad", 0.70m), ("Niño", 0.50m)
+        };
+
+        public static decimal Precio(decimal precioBase, decimal factor) => Math.Round(precioBase * factor, 2);
+    }
+
     public static class PoliticaCancelacion
     {
         public static readonly string[] Motivos = { "Cambio de planes", "Emergencia", "Error en reserva" };

@@ -1,6 +1,7 @@
-﻿@model NuevaReservaVM
+@model NuevaReservaVM
 @{
     ViewData["Title"] = "Nueva Reserva";
+    var viaje = Model.ViajeSeleccionado;
 }
 
 <nav class="text-muted small mb-2">INICIO &gt; RESERVAS &gt; <span class="text-dark fw-bold">NUEVA RESERVA</span></nav>
@@ -17,23 +18,27 @@
         <h6 class="fw-bold text-teal mb-3">1. BÚSQUEDA DE VIAJE</h6>
         <form asp-action="BuscarViajes" method="post" class="row g-3 align-items-end">
             <div class="col-md-3">
-                <label class="form-label">Origen</label>
-                <input asp-for="Origen" class="form-control" placeholder="Lima" />
+                <label asp-for="Origen" class="form-label">Origen</label>
+                <select asp-for="Origen" asp-items="Model.Ciudades" class="form-select">
+                    <option value="">Cualquier origen</option>
+                </select>
             </div>
             <div class="col-md-3">
-                <label class="form-label">Destino</label>
-                <input asp-for="Destino" class="form-control" placeholder="Arequipa" />
+                <label asp-for="Destino" class="form-label">Destino</label>
+                <select asp-for="Destino" asp-items="Model.Ciudades" class="form-select">
+                    <option value="">Cualquier destino</option>
+                </select>
             </div>
             <div class="col-md-3">
-                <label class="form-label">Fecha</label>
+                <label asp-for="FechaViaje" class="form-label">Fecha <span class="text-muted small">(opcional)</span></label>
                 <input asp-for="FechaViaje" type="date" class="form-control" />
             </div>
             <div class="col-md-2">
-                <label class="form-label">Pasajeros</label>
+                <label asp-for="Pasajeros" class="form-label">Pasajeros</label>
                 <input asp-for="Pasajeros" type="number" min="1" class="form-control" />
             </div>
             <div class="col-md-1">
-                <button type="submit" class="btn chaski-btn-primary w-100">
+                <button type="submit" class="btn chaski-btn-primary w-100" title="Buscar viajes">
                     <i class="fa-solid fa-magnifying-glass"></i>
                 </button>
             </div>
@@ -41,46 +46,66 @@
     </div>
 </div>
 
+@if (!string.IsNullOrEmpty(Model.AvisoBusqueda))
+{
+    <div class="alert alert-warning d-flex align-items-start" role="alert">
+        <i class="fa-solid fa-triangle-exclamation me-2 mt-1"></i>
+        <div>
+            @Model.AvisoBusqueda
+            @if (User.IsInRole("Administrador"))
+            {
+                <div class="mt-1">
+                    <a asp-controller="Viajes" asp-action="Nuevo" class="alert-link">
+                        <i class="fa-solid fa-plus me-1"></i>Programar un viaje nuevo
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+}
+
 @if (Model.ViajesDisponibles.Any())
 {
     <!-- 2. RESULTADOS -->
     <div class="card mb-4">
         <div class="card-body">
-            <h6 class="fw-bold text-teal mb-3">2. SELECCIÓN DE VIAJE DISPONIBLE</h6>
+            <h6 class="fw-bold text-teal mb-3">2. SELECCIÓN DE VIAJE DISPONIBLE <span class="text-muted fw-normal">(@Model.ViajesDisponibles.Count)</span></h6>
             <form asp-action="SeleccionarViaje" method="post">
                 <input type="hidden" asp-for="Origen" />
                 <input type="hidden" asp-for="Destino" />
                 <input type="hidden" asp-for="FechaViaje" />
                 <input type="hidden" asp-for="Pasajeros" />
-                <table class="table align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th></th>
-                            <th>Servicio</th>
-                            <th>Empresa</th>
-                            <th>Salida</th>
-                            <th>Llegada</th>
-                            <th>Duración</th>
-                            <th>Precio desde</th>
-                            <th>Asientos disp.</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var v in Model.ViajesDisponibles)
-                        {
+                <div class="table-responsive">
+                    <table class="table align-middle table-hover">
+                        <thead class="table-light">
                             <tr>
-                                <td><input type="radio" name="IdViajeSeleccionado" value="@v.IdViaje" required /></td>
-                                <td>@v.Servicio</td>
-                                <td>@v.Empresa</td>
-                                <td>@v.HoraSalida</td>
-                                <td>@v.HoraLlegada</td>
-                                <td>@v.Duracion</td>
-                                <td>S/ @v.PrecioDesde.ToString("0.00")</td>
-                                <td><span class="badge bg-success-subtle text-success">@v.AsientosDisponibles</span></td>
+                                <th></th>
+                                <th>Ruta</th>
+                                <th>Salida</th>
+                                <th>Llegada</th>
+                                <th>Servicio</th>
+                                <th>Duración</th>
+                                <th>Precio desde</th>
+                                <th>Asientos disp.</th>
                             </tr>
-                        }
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            @foreach (var v in Model.ViajesDisponibles)
+                            {
+                                <tr>
+                                    <td><input type="radio" name="IdViajeSeleccionado" value="@v.IdViaje" checked="@(Model.IdViajeSeleccionado == v.IdViaje)" required /></td>
+                                    <td class="fw-semibold text-nowrap">@v.Ruta</td>
+                                    <td class="text-nowrap">@v.HoraSalida</td>
+                                    <td class="text-nowrap">@v.HoraLlegada</td>
+                                    <td>@v.Servicio</td>
+                                    <td class="text-nowrap">@v.Duracion</td>
+                                    <td class="text-nowrap">S/ @v.PrecioDesde.ToString("0.00")</td>
+                                    <td><span class="badge bg-success-subtle text-success">@v.AsientosDisponibles</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
                 <button type="submit" class="btn chaski-btn-primary">Continuar con este viaje</button>
             </form>
         </div>
@@ -89,11 +114,26 @@
 
 @if (Model.Asientos.Any())
 {
+    <!-- VIAJE ELEGIDO: se muestra el viaje real para evitar equivocaciones -->
+    @if (viaje != null)
+    {
+        <div class="alert alert-info d-flex align-items-center gap-3" role="alert">
+            <i class="fa-solid fa-route fa-lg"></i>
+            <div>
+                <strong>Viaje elegido:</strong> @viaje.Ruta
+                &middot; @viaje.Salida.ToString("dd/MM/yyyy HH:mm")
+                &middot; @viaje.Servicio
+                &middot; llega aprox. @viaje.HoraLlegada
+            </div>
+        </div>
+    }
+
     <form asp-action="GuardarReserva" method="post">
         <input type="hidden" asp-for="IdViajeSeleccionado" />
         <input type="hidden" asp-for="Origen" />
         <input type="hidden" asp-for="Destino" />
         <input type="hidden" asp-for="FechaViaje" />
+        <input type="hidden" asp-for="Pasajeros" />
         <div class="row">
             <!-- 4. ASIENTOS -->
             <div class="col-md-6 mb-4">
@@ -168,12 +208,15 @@
             </div>
         </div>
 
-        <!-- RESUMEN -->
+        <!-- RESUMEN: ruta y fecha del viaje realmente elegido -->
         <div class="card">
-            <div class="card-body d-flex justify-content-between align-items-center">
+            <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
-                    <strong>Ruta:</strong> @Model.Origen - @Model.Destino &nbsp;|&nbsp;
-                    <strong>Fecha:</strong> @Model.FechaViaje?.ToString("dd/MM/yyyy")
+                    @if (viaje != null)
+                    {
+                        <strong>Ruta:</strong> @viaje.Ruta <span>&nbsp;|&nbsp;</span>
+                        <strong>Salida:</strong> @viaje.Salida.ToString("dd/MM/yyyy HH:mm")
+                    }
                 </div>
                 <button type="submit" class="btn chaski-btn-primary px-4">
                     <i class="fa-solid fa-floppy-disk me-1"></i> Guardar reserva
@@ -181,14 +224,15 @@
             </div>
         </div>
     </form>
-    @section Scripts {
-        <script>
-            function seleccionarAsiento(el) {
-                if (el.classList.contains('seat-ocupado')) return;
-                document.querySelectorAll('.seat-seleccionado').forEach(s => s.classList.remove('seat-seleccionado'));
-                el.classList.add('seat-seleccionado');
-                document.getElementById('AsientoSeleccionado').value = el.dataset.id;
-            }
-        </script>
-    }
+}
+
+@section Scripts {
+    <script>
+        function seleccionarAsiento(el) {
+            if (el.classList.contains('seat-ocupado')) return;
+            document.querySelectorAll('.seat-seleccionado').forEach(s => s.classList.remove('seat-seleccionado'));
+            el.classList.add('seat-seleccionado');
+            document.getElementById('AsientoSeleccionado').value = el.dataset.id;
+        }
+    </script>
 }

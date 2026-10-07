@@ -1,0 +1,91 @@
+@model ViajeFormVM
+@{
+    var editando = Model.IdViaje.HasValue;
+    ViewData["Title"] = editando ? "Editar viaje" : "Nuevo viaje";
+}
+
+<nav class="text-muted small mb-2">INICIO &gt; <a asp-action="Index" class="text-muted text-decoration-none">VIAJES</a> &gt; <span class="text-dark fw-bold">@(editando ? "EDITAR" : "NUEVO")</span></nav>
+<h4 class="fw-bold mb-4"><i class="fa-solid fa-route me-2"></i>@(editando ? "Editar viaje" : "Programar un viaje")</h4>
+
+<form asp-action="@(editando ? "Editar" : "Nuevo")" asp-route-id="@Model.IdViaje" method="post">
+    <div class="row">
+        <div class="col-xl-8 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold text-teal mb-3">DATOS DEL VIAJE</h6>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label asp-for="IdRuta" class="form-label">Ruta</label>
+                            <select asp-for="IdRuta" asp-items="Model.Rutas" class="form-select"></select>
+                            <span asp-validation-for="IdRuta" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="IdBus" class="form-label">Bus</label>
+                            <select asp-for="IdBus" asp-items="Model.Buses" class="form-select">
+                                <option value="">— Elige un bus —</option>
+                            </select>
+                            <span asp-validation-for="IdBus" class="text-danger small"></span>
+                            <div class="form-text">Solo aparecen los buses operativos. El sistema avisa si el bus ya tiene otro viaje a esa hora.</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Fecha" class="form-label">Fecha de salida</label>
+                            <input asp-for="Fecha" type="date" class="form-control" />
+                            <span asp-validation-for="Fecha" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Hora" class="form-label">Hora de salida</label>
+                            <input asp-for="Hora" type="time" class="form-control" value="@Model.Hora?.ToString(@"hh\:mm")" />
+                            <span asp-validation-for="Hora" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="PrecioBase" class="form-label">Precio base (S/)</label>
+                            <input asp-for="PrecioBase" id="precioBase" class="form-control" inputmode="decimal" autocomplete="off" placeholder="90.00" />
+                            <span asp-validation-for="PrecioBase" class="text-danger small"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold text-teal mb-3">TARIFAS QUE SE GENERAN</h6>
+                    <p class="text-muted small">Se calculan solas a partir del precio base.</p>
+                    <table class="table align-middle mb-0">
+                        <tbody>
+                            <tr><td>General <span class="text-muted small">(100 %)</span></td><td class="text-end fw-semibold" data-factor="1.00">S/ --</td></tr>
+                            <tr><td>Estudiante <span class="text-muted small">(80 %)</span></td><td class="text-end fw-semibold" data-factor="0.80">S/ --</td></tr>
+                            <tr><td>Tercera Edad <span class="text-muted small">(70 %)</span></td><td class="text-end fw-semibold" data-factor="0.70">S/ --</td></tr>
+                            <tr><td>Niño <span class="text-muted small">(50 %)</span></td><td class="text-end fw-semibold" data-factor="0.50">S/ --</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn chaski-btn-primary px-4">
+            <i class="fa-solid fa-floppy-disk me-1"></i> @(editando ? "Guardar cambios" : "Programar viaje")
+        </button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        (function () {
+            const input = document.getElementById('precioBase');
+            const celdas = document.querySelectorAll('[data-factor]');
+            function actualizar() {
+                const valor = parseFloat((input.value || '').replace(',', '.'));
+                celdas.forEach(function (td) {
+                    td.textContent = isNaN(valor) ? 'S/ --' : 'S/ ' + (Math.round(valor * parseFloat(td.dataset.factor) * 100) / 100).toFixed(2);
+                });
+            }
+            input.addEventListener('input', actualizar);
+            actualizar();
+        })();
+    </script>
+}
