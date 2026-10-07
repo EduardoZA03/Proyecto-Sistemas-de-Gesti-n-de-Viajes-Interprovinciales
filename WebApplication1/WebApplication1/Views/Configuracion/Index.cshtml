@@ -55,6 +55,10 @@
                         <h6 class="fw-bold text-teal mb-3">Información del Usuario</h6>
                         <form asp-action="GuardarPerfil" method="post">
                             <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label class="form-label">ID de usuario</label>
+                                    <input asp-for="NombreUsuario" class="form-control" readonly />
+                                </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Nombres</label>
                                     <input asp-for="Nombres" class="form-control" />
@@ -115,7 +119,7 @@
                             </div>
                             <div class="alert alert-light small border">
                                 <i class="fa-solid fa-circle-info me-1"></i>
-                                La contraseña debe tener al menos 8 caracteres, incluyendo letras, números y un carácter especial.
+                                La contraseña debe tener al menos 8 caracteres, incluyendo letras y números.
                             </div>
                             <button type="submit" class="btn chaski-btn-primary w-100">
                                 <i class="fa-solid fa-lock me-1"></i> Cambiar contraseña

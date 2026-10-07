@@ -1,0 +1,40 @@
+@model WebApplication1.Components.HeaderInfoModel
+
+<div class="d-none d-lg-flex flex-grow-1 justify-content-center align-items-center gap-3 px-3">
+    <div class="chaski-chip">
+        <i class="fa-regular fa-calendar"></i>
+        <div>
+            <div class="chip-valor" id="chipHora">--:--</div>
+            <div class="chip-texto" id="chipFecha">&nbsp;</div>
+        </div>
+    </div>
+    <div class="chaski-chip">
+        <i class="fa-solid fa-bus"></i>
+        <div>
+            <div class="chip-valor">@Model.ViajesHoy</div>
+            <div class="chip-texto">@(Model.ViajesHoy == 1 ? "viaje hoy" : "viajes hoy")</div>
+        </div>
+    </div>
+    <a class="chaski-chip" asp-controller="Reservas" asp-action="Index" asp-route-estado="Pendiente"
+       title="Ver reservas pendientes de cobro">
+        <i class="fa-solid fa-hourglass-half"></i>
+        <div>
+            <div class="chip-valor">@Model.PendientesPago</div>
+            <div class="chip-texto">@(Model.PendientesPago == 1 ? "por cobrar" : "por cobrar")</div>
+        </div>
+    </a>
+</div>
+
+<script>
+    (function () {
+        function tick() {
+            var d = new Date();
+            document.getElementById('chipHora').textContent =
+                d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+            var f = d.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
+            document.getElementById('chipFecha').textContent = f.charAt(0).toUpperCase() + f.slice(1);
+        }
+        tick();
+        setInterval(tick, 30000);
+    })();
+</script>

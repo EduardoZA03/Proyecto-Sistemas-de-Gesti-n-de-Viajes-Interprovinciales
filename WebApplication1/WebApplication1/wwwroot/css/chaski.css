@@ -1,6 +1,12 @@
 ﻿:root {
     --chaski-teal: #17a6a0;
     --chaski-teal-dark: #128f8a;
+    --chaski-header-h: 84px;
+}
+
+/* Letra más grande en todo el sistema (todo lo demás escala con rem) */
+html {
+    font-size: 112.5%; /* 18 px */
 }
 
 body {
@@ -13,17 +19,57 @@ body {
 .chaski-header {
     background-color: var(--chaski-teal);
     color: #fff;
-    height: 70px;
+    height: var(--chaski-header-h);
 }
 
 .chaski-logo {
-    height: 40px;
+    height: 52px;
+}
+
+.chaski-title {
+    font-size: 1.05rem;
+    line-height: 1.25;
+    letter-spacing: 0.2px;
+}
+
+/* Píldoras informativas del centro del encabezado */
+.chaski-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background-color: rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    padding: 0.4rem 1rem;
+    color: #fff;
+    text-decoration: none;
+    white-space: nowrap;
+    line-height: 1.15;
+}
+
+    .chaski-chip i {
+        font-size: 1.15rem;
+    }
+
+    .chaski-chip .chip-valor {
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+
+    .chaski-chip .chip-texto {
+        font-size: 0.8rem;
+        opacity: 0.9;
+    }
+
+a.chaski-chip:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
 }
 
 /* SIDEBAR */
 .chaski-sidebar {
-    width: 220px;
-    min-height: calc(100vh - 70px);
+    flex-shrink: 0; /* el menú no se encoge cuando la tabla es ancha */
+    width: 250px;
+    min-height: calc(100vh - var(--chaski-header-h));
     background-color: #fff;
     border-right: 1px solid #e5e5e5;
     padding-top: 1rem;
@@ -46,7 +92,8 @@ body {
 
 /* CONTENIDO */
 .chaski-content {
-    min-height: calc(100vh - 70px);
+    min-width: 0; /* permite que el contenido se ajuste al espacio disponible */
+    min-height: calc(100vh - var(--chaski-header-h));
 }
 
 .text-teal {
@@ -104,7 +151,7 @@ body {
 /* BANNER PRINCIPAL (INICIO) */
 .chaski-banner {
     position: relative;
-    min-height: 220px;
+    min-height: 260px;
     border-radius: 12px;
     background-image: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), url('/images/carretera.jpg');
     background-size: cover;
@@ -144,3 +191,52 @@ body {
         font-size: 1.6rem;
         color: var(--chaski-teal);
     }
+
+/* FOOTER */
+.chaski-footer {
+    margin: 2rem -1.5rem -1.5rem; /* a todo el ancho del contenido, pegado al fondo */
+    padding: 0.9rem 1.5rem;
+    background-color: #fff;
+    border-top: 1px solid #e5e5e5;
+    color: #6c757d;
+    font-size: 0.85rem;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* BOTÓN PRINCIPAL */
+.chaski-btn-primary {
+    background-color: var(--chaski-teal);
+    border-color: var(--chaski-teal);
+    color: #fff;
+}
+
+    .chaski-btn-primary:hover,
+    .chaski-btn-primary:focus,
+    .chaski-btn-primary:active {
+        background-color: var(--chaski-teal-dark);
+        border-color: var(--chaski-teal-dark);
+        color: #fff;
+    }
+
+/* INICIO DE SESIÓN */
+.chaski-auth-bg {
+    background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/images/carretera.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+.chaski-auth-card {
+    width: 100%;
+    max-width: 420px;
+    border: 0;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.chaski-auth-head {
+    background-color: var(--chaski-teal);
+}

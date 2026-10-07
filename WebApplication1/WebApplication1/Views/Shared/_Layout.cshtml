@@ -17,18 +17,32 @@
     <!-- HEADER -->
     <header class="chaski-header d-flex align-items-center px-3">
         <img src="~/images/logo-chaski.png" class="chaski-logo me-3" alt="Chaski-Ruta" />
-        <div class="chaski-title flex-grow-1">
+        <div class="chaski-title @(User.Identity?.IsAuthenticated == true ? "" : "flex-grow-1")">
             <div class="fw-bold">SISTEMA INTEGRAL DE GESTIÓN</div>
             <div class="fw-bold">Y CONTROL DE VIAJES INTERPROVINCIALES</div>
         </div>
-        <div class="chaski-user d-flex align-items-center gap-2">
-            <i class="fa-solid fa-circle-user fa-2x"></i>
-            <span>Ejecutivo Comercial</span>
-        </div>
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            @await Component.InvokeAsync("HeaderInfo")
+            <div class="chaski-user d-flex align-items-center gap-2 ms-auto">
+                <i class="fa-solid fa-circle-user fa-2x"></i>
+                <div class="lh-sm">
+                    <div>@User.FindFirst("NombreCompleto")?.Value</div>
+                    <div class="small opacity-75">@User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</div>
+                </div>
+                <form asp-controller="Cuenta" asp-action="Salir" method="post" class="ms-2 mb-0">
+                    <button type="submit" class="btn btn-sm btn-outline-light" title="Cerrar sesión">
+                        <i class="fa-solid fa-right-from-bracket me-1"></i> Salir
+                    </button>
+                </form>
+            </div>
+        }
     </header>
 
     <div class="d-flex">
         <!-- SIDEBAR -->
+        @if (User.Identity?.IsAuthenticated == true)
+        {
         <nav class="chaski-sidebar">
             <ul class="nav flex-column">
                 <li class="nav-item">
@@ -55,24 +69,50 @@
                         <i class="fa-solid fa-circle-xmark me-2"></i> Cancelaciones
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reportes" ? "active" : "")"
-                       asp-controller="Reportes" asp-action="Index">
-                        <i class="fa-solid fa-clipboard-list me-2"></i> Reportes
-                    </a>
-                </li>
+                @if (User.IsInRole("Administrador"))
+                {
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reportes" ? "active" : "")"
+                           asp-controller="Reportes" asp-action="Index">
+                            <i class="fa-solid fa-clipboard-list me-2"></i> Reportes
+                        </a>
+                    </li>
+                }
                 <li class="nav-item">
                     <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Configuracion" ? "active" : "")"
                        asp-controller="Configuracion" asp-action="Index">
                         <i class="fa-solid fa-gear me-2"></i> Configuración
                     </a>
                 </li>
+                @if (User.IsInRole("Administrador"))
+                {
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "Registro" ? "active" : "")"
+                           asp-controller="Cuenta" asp-action="Registro">
+                            <i class="fa-solid fa-user-plus me-2"></i> Crear cuenta
+                        </a>
+                    </li>
+                }
             </ul>
         </nav>
+        }
 
         <!-- CONTENIDO -->
-        <main class="chaski-content flex-grow-1 p-4">
-            @RenderBody()
+        <main class="chaski-content flex-grow-1 p-4 d-flex flex-column">
+            <div class="flex-grow-1">
+                @RenderBody()
+            </div>
+
+            <!-- FOOTER -->
+            <footer class="chaski-footer">
+                <div>
+                    <strong class="text-teal">Chaski-Ruta</strong>
+                    &copy; @DateTime.Now.Year &middot; Sistema Integral de Gestión y Control de Viajes Interprovinciales
+                </div>
+                <div>
+                    <i class="fa-solid fa-code me-1"></i> ASP.NET Core &middot; SQL Server
+                </div>
+            </footer>
         </main>
     </div>
 

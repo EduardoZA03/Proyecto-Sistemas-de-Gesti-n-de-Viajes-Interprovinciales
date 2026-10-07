@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Claims;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using WebApplication1.Models;
@@ -7,13 +8,14 @@ namespace WebApplication1.Data
 {
     public static class UsuarioActual
     {
-        // Todavía no hay inicio de sesión: se toma al primer Vendedor activo.
-        // Cuando exista login, reemplazar por el usuario autenticado.
-        public static Task<Usuario?> ObtenerUsuarioActualAsync(this ChaskiRutaContext db) =>
-            db.Usuarios.Include(u => u.Rol)
-              .Where(u => u.Estado == "Activo" && u.Rol.NombreRol == "Vendedor")
-              .OrderBy(u => u.IdUsuario)
-              .FirstOrDefaultAsync();
+        // Usuario que inició sesión (null si no existe o fue desactivado)
+        public static Task<Usuario?> ObtenerUsuarioActualAsync(this ChaskiRutaContext db, ClaimsPrincipal user)
+        {
+            var id = int.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var n) ? n : 0;
+            return db.Usuarios.Include(u => u.Rol)
+                .Where(u => u.IdUsuario == id && u.Estado == "Activo")
+                .FirstOrDefaultAsync();
+        }
     }
 
     public static class MetodosPago

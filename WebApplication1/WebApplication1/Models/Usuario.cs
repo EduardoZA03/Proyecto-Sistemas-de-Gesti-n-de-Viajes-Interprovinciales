@@ -12,6 +12,13 @@
         public string Estado { get; set; } = string.Empty;
         public DateTime FechaCreacion { get; set; }
 
+        // Inicio de sesión
+        public string NombreUsuario { get; set; } = string.Empty; // ID con el que se entra
+        public string? ContrasenaHash { get; set; }               // nunca se guarda la contraseña en texto
+        public int IntentosFallidos { get; set; }
+        public DateTime? BloqueadoHasta { get; set; }
+        public DateTime? UltimoAcceso { get; set; }
+
         public Rol Rol { get; set; } = null!;
         public ICollection<Reserva> Reservas { get; set; } = new List<Reserva>();
     }
