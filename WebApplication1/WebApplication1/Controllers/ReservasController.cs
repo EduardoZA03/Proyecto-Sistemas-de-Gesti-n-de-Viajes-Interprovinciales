@@ -13,9 +13,166 @@ namespace WebApplication1.Controllers
 
         public ReservasController(ChaskiRutaContext db) => _db = db;
 
-        public IActionResult Index()
+        [HttpGet]
+        public async Task<IActionResult> Index(string? estado, string? texto)
         {
-            return View();
+            var q = _db.Reservas.AsNoTracking().AsQueryable();
+
+            if (Formato.FiltroOpcional(estado) is { } e)
+                q = q.Where(r => r.Estado == e);
+            if (!string.IsNullOrWhiteSpace(texto))
+            {
+                var t = texto.Trim();
+                q = q.Where(r => r.CodigoReserva.Contains(t)
+                    || r.Pasajeros.Any(x => (x.Nombres + " " + x.Apellidos).Contains(t) || x.NroDocumento.Contains(t)));
+            }
+
+            var filas = await q.OrderByDescending(r => r.FechaReserva).Take(100)
+                .Select(r => new
+                {
+                    r.IdReserva,
+                    r.CodigoReserva,
+                    r.FechaReserva,
+                    r.Total,
+                    r.Estado,
+                    Pasajero = r.Pasajeros.OrderBy(p => p.IdPasajero)
+                                .Select(p => new { p.Nombres, p.Apellidos, p.NroDocumento }).FirstOrDefault(),
+                    Origen = r.Viaje.Ruta.Origen.NombreCiudad,
+                    Destino = r.Viaje.Ruta.Destino.NombreCiudad,
+                    Servicio = r.Viaje.Bus.Servicio,
+                    r.Viaje.FechaSalida,
+                    r.Viaje.HoraSalida,
+                    ViajeEstado = r.Viaje.Estado,
+                    Asientos = r.ReservaAsientos.Select(ra => ra.Asiento.NumeroAsiento).ToList(),
+                    Pagado = r.Pagos.Where(p => p.Estado == "Pagado").Sum(p => p.Monto)
+                })
+                .ToListAsync();
+
+            var ahora = DateTime.Now;
+            var model = new ReservasIndexVM
+            {
+                Estado = estado ?? "Todos",
+                Texto = texto ?? string.Empty,
+                MetodosPago = MetodosPago.Todos,
+                Motivos = PoliticaCancelacion.Motivos,
+                Reservas = filas.Select(x =>
+                {
+                    var salida = x.FechaSalida.Add(x.HoraSalida);
+                    var yaSalio = x.ViajeEstado != "Programado" || salida <= ahora;
+                    var pct = x.Pagado > 0 ? PoliticaCancelacion.PorcentajeDevolucion(salida - ahora) : 0;
+                    return new ReservaListaVM
+                    {
+                        IdReserva = x.IdReserva,
+                        Codigo = x.CodigoReserva,
+                        FechaReserva = x.FechaReserva,
+                        Pasajero = x.Pasajero is null ? "(sin pasajero)" : $"{x.Pasajero.Nombres} {x.Pasajero.Apellidos}",
+                        Documento = x.Pasajero?.NroDocumento ?? string.Empty,
+                        Ruta = $"{x.Origen} - {x.Destino} ({x.Servicio})",
+                        FechaViaje = salida,
+                        Asientos = string.Join(", ", x.Asientos.Select(a => a.TrimStart('0')).OrderBy(a => a.Length).ThenBy(a => a)),
+                        Total = x.Total,
+                        Pagado = x.Pagado,
+                        Estado = x.Estado,
+                        PuedeCobrar = x.Estado == "Pendiente" && !yaSalio,
+                        PuedeCancelar = x.Estado != "Cancelada" && !yaSalio,
+                        PorcentajeDevolucion = pct,
+                        DevolucionEstimada = Math.Round(x.Pagado * pct / 100m, 2)
+                    };
+                }).ToList()
+            };
+            return View(model);
+        }
+
+        // Registra el pago de una reserva pendiente y la confirma
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> Cobrar(int idReserva, string metodoPago, string? referencia)
+        {
+            if (!MetodosPago.Todos.Contains(metodoPago))
+            {
+                TempData["Error"] = "Elige un método de pago válido.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            var reserva = await _db.Reservas.Include(r => r.Pagos).Include(r => r.Viaje)
+                .FirstOrDefaultAsync(r => r.IdReserva == idReserva);
+
+            if (reserva is null)
+                TempData["Error"] = "No se encontró la reserva.";
+            else if (reserva.Estado != "Pendiente")
+                TempData["Error"] = $"La reserva {reserva.CodigoReserva} no está pendiente de pago.";
+            else if (PoliticaCancelacion.YaSalio(reserva.Viaje))
+                TempData["Error"] = $"El viaje de la reserva {reserva.CodigoReserva} ya salió; no se puede cobrar.";
+            else
+            {
+                // Si ya existía un pago pendiente se completa; si no, se crea uno
+                var pago = reserva.Pagos.FirstOrDefault(p => p.Estado == "Pendiente");
+                if (pago is null)
+                {
+                    pago = new Pago();
+                    reserva.Pagos.Add(pago);
+                }
+                var ref100 = referencia?.Trim() ?? string.Empty;
+                pago.FechaPago = DateTime.Now;
+                pago.Monto = reserva.Total;
+                pago.MetodoPago = metodoPago;
+                pago.Referencia = ref100.Length > 100 ? ref100[..100] : ref100;
+                pago.Estado = "Pagado";
+                reserva.Estado = "Confirmada";
+
+                await _db.SaveChangesAsync();
+                await tx.CommitAsync();
+                TempData["Mensaje"] = $"Reserva {reserva.CodigoReserva} cobrada: S/ {reserva.Total:0.00} con {metodoPago}.";
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Cancela una reserva, libera sus asientos y calcula la devolución según la política
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> Cancelar(int idReserva, string motivo)
+        {
+            if (!PoliticaCancelacion.Motivos.Contains(motivo))
+            {
+                TempData["Error"] = "Elige un motivo de cancelación.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            var reserva = await _db.Reservas
+                .Include(r => r.Pagos).Include(r => r.Viaje).Include(r => r.ReservaAsientos).Include(r => r.Cancelacion)
+                .FirstOrDefaultAsync(r => r.IdReserva == idReserva);
+
+            if (reserva is null)
+                TempData["Error"] = "No se encontró la reserva.";
+            else if (reserva.Estado == "Cancelada")
+                TempData["Error"] = $"La reserva {reserva.CodigoReserva} ya estaba cancelada.";
+            else if (PoliticaCancelacion.YaSalio(reserva.Viaje))
+                TempData["Error"] = $"El viaje de la reserva {reserva.CodigoReserva} ya salió; no se puede cancelar.";
+            else
+            {
+                var salida = reserva.Viaje.FechaSalida.Add(reserva.Viaje.HoraSalida);
+                var pagado = reserva.Pagos.Where(p => p.Estado == "Pagado").Sum(p => p.Monto);
+                var pct = pagado > 0 ? PoliticaCancelacion.PorcentajeDevolucion(salida - DateTime.Now) : 0;
+                var reembolso = Math.Round(pagado * pct / 100m, 2);
+
+                reserva.Estado = "Cancelada";
+                foreach (var ra in reserva.ReservaAsientos) ra.Estado = "Cancelado";
+                foreach (var p in reserva.Pagos.Where(p => p.Estado == "Pendiente")) p.Estado = "Anulado";
+                reserva.Cancelacion = new Cancelacion
+                {
+                    FechaCancelacion = DateTime.Now,
+                    Motivo = motivo,
+                    MontoReembolso = reembolso,
+                    Estado = reembolso > 0 ? "Reembolsado" : "Sin devolución"
+                };
+
+                await _db.SaveChangesAsync();
+                await tx.CommitAsync();
+                TempData["Mensaje"] = reembolso > 0
+                    ? $"Reserva {reserva.CodigoReserva} cancelada. Devolución: S/ {reembolso:0.00} ({pct}%)."
+                    : $"Reserva {reserva.CodigoReserva} cancelada. Sin devolución" + (pagado > 0 ? " (faltan menos de 12 horas)." : " (no tenía pagos).");
+            }
+            return RedirectToAction(nameof(Index));
         }
 
         [HttpGet]

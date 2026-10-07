@@ -74,7 +74,9 @@ namespace WebApplication1.Controllers
 
             f.TotalCancelaciones = await q.CountAsync();
             f.MontoDevuelto = await q.SumAsync(c => (decimal?)c.MontoReembolso) ?? 0m;
-            f.PenalidadesAplicadas = await q.SumAsync(c => (decimal?)(c.Reserva.Total - c.MontoReembolso)) ?? 0m;
+            // Penalidad = lo que se había pagado menos lo que se devuelve
+            f.PenalidadesAplicadas = await q.SumAsync(c => (decimal?)(
+                c.Reserva.Pagos.Where(p => p.Estado == "Pagado").Sum(p => p.Monto) - c.MontoReembolso)) ?? 0m;
 
             var hoy = DateTime.Today;
             var manana = hoy.AddDays(1);
@@ -96,6 +98,7 @@ namespace WebApplication1.Controllers
                 c.Estado,
                 CodigoReserva = c.Reserva.CodigoReserva,
                 Total = c.Reserva.Total,
+                Pagado = c.Reserva.Pagos.Where(p => p.Estado == "Pagado").Sum(p => p.Monto),
                 Pasajero = c.Reserva.Pasajeros.OrderBy(x => x.IdPasajero)
                             .Select(x => new { x.Nombres, x.Apellidos, x.NroDocumento })
                             .FirstOrDefault(),
@@ -117,7 +120,7 @@ namespace WebApplication1.Controllers
                 FechaViaje = x.FechaSalida.Add(x.HoraSalida),
                 MontoTotal = x.Total,
                 Devolucion = x.MontoReembolso,
-                Penalidad = x.Total - x.MontoReembolso,
+                Penalidad = x.Pagado - x.MontoReembolso,
                 Motivo = x.Motivo,
                 Estado = x.Estado
             }).ToList();

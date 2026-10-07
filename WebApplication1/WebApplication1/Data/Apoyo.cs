@@ -16,6 +16,26 @@ namespace WebApplication1.Data
               .FirstOrDefaultAsync();
     }
 
+    public static class MetodosPago
+    {
+        public static readonly string[] Todos = { "Efectivo", "Tarjeta", "Yape", "Plin", "Transferencia" };
+    }
+
+    public static class PoliticaCancelacion
+    {
+        public static readonly string[] Motivos = { "Cambio de planes", "Emergencia", "Error en reserva" };
+
+        // 24 h o más antes: 100 %  |  entre 12 y 24 h: 80 %  |  menos de 12 h: sin devolución
+        public static int PorcentajeDevolucion(TimeSpan faltan) =>
+            faltan >= TimeSpan.FromHours(24) ? 100
+            : faltan >= TimeSpan.FromHours(12) ? 80
+            : 0;
+
+        // Un viaje que ya salió (o ya no está programado) no se puede cobrar ni cancelar
+        public static bool YaSalio(Viaje viaje) =>
+            viaje.Estado != "Programado" || viaje.FechaSalida.Add(viaje.HoraSalida) <= DateTime.Now;
+    }
+
     public static class Formato
     {
         public static string CodigoVenta(int idPago) => $"VTA-{idPago:D6}";
