@@ -1,0 +1,30 @@
+namespace WebApplication1.Data
+{
+    public class serv_Singleton
+    {
+        private static serv_Singleton? _instancia;
+        private static readonly object _bloqueo = new object();
+
+        public DateTime FechaCreacionInstancia { get; }
+
+        private serv_Singleton()
+        {
+            FechaCreacionInstancia = DateTime.Now;
+        }
+
+        public static serv_Singleton Instancia
+        {
+            get
+            {
+                lock (_bloqueo)
+                {
+                    if (_instancia == null)
+                    {
+                        _instancia = new serv_Singleton();
+                    }
+                    return _instancia;
+                }
+            }
+        }
+    }
+}
