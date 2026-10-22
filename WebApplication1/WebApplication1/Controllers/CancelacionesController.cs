@@ -50,14 +50,16 @@ namespace WebApplication1.Controllers
         public async Task<IActionResult> ExportarExcel(CancelacionesIndexVM filtros)
         {
             var libro = await ConstruirLibroAsync(filtros);
-            return File(ExcelExportador.Generar(libro), ExportacionUtil.TipoXlsx, libro.NombreArchivoCompleto("xlsx"));
+            var archivo = new GeneradorReporteExcel().Generar(libro);
+            return File(archivo.Contenido, archivo.TipoContenido, archivo.NombreArchivo);
         }
 
         [HttpGet]
         public async Task<IActionResult> ExportarPdf(CancelacionesIndexVM filtros)
         {
             var libro = await ConstruirLibroAsync(filtros);
-            return File(PdfExportador.GenerarReporte(libro, ExportacionUtil.Logo(_env)), ExportacionUtil.TipoPdf, libro.NombreArchivoCompleto("pdf"));
+            var archivo = new GeneradorReportePdf(ExportacionUtil.Logo(_env)).Generar(libro);
+            return File(archivo.Contenido, archivo.TipoContenido, archivo.NombreArchivo);
         }
 
         private async Task<LibroReporte> ConstruirLibroAsync(CancelacionesIndexVM entrada)
