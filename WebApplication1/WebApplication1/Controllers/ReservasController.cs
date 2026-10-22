@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebApplication1.Data;
+using WebApplication1.Data.Documentos;
 using WebApplication1.Models;
 using WebApplication1.Models.ViewModels;
 
@@ -16,15 +17,6 @@ namespace WebApplication1.Controllers
         private static readonly Regex FormatoTelefono = new(@"^[0-9+ ]{6,15}$", RegexOptions.Compiled);
 
         private static string LimpiarEspacios(string? texto) => Regex.Replace((texto ?? string.Empty).Trim(), @"\s+", " ");
-
-        // Formato de cada tipo de documento
-        private static (Regex Formato, string Mensaje)? ReglaDocumento(string tipo) => tipo switch
-        {
-            "DNI" => (new Regex(@"^\d{8}$"), "El DNI debe tener exactamente 8 dígitos."),
-            "Carné Extranjería" => (new Regex(@"^[A-Za-z0-9]{9,12}$"), "El carné de extranjería debe tener entre 9 y 12 letras o números."),
-            "Pasaporte" => (new Regex(@"^[A-Za-z0-9]{6,12}$"), "El pasaporte debe tener entre 6 y 12 letras o números."),
-            _ => null
-        };
 
         private readonly ChaskiRutaContext _db;
 
@@ -272,15 +264,19 @@ namespace WebApplication1.Controllers
                     ? "Ingresa los apellidos."
                     : "Los apellidos solo pueden tener letras, espacios, punto, guion o apóstrofe (mínimo 2 caracteres).");
 
-            var reglaDoc = ReglaDocumento(tipoDoc);
-            if (reglaDoc is null)
+            var creadorDoc = TiposDocumento.Para(tipoDoc);
+            if (creadorDoc is null)
                 ModelState.AddModelError(nameof(model.TipoDocumento), "Elige el tipo de documento.");
             else if (documento == "")
                 ModelState.AddModelError(nameof(model.NumeroDocumento), "Ingresa el número de documento.");
-            else if (!reglaDoc.Value.Formato.IsMatch(documento))
-                ModelState.AddModelError(nameof(model.NumeroDocumento), reglaDoc.Value.Mensaje);
-            else if (tipoDoc != "DNI")
-                documento = documento.ToUpperInvariant();
+            else
+            {
+                var resultado = creadorDoc.Validar(documento);
+                if (!resultado.Valido)
+                    ModelState.AddModelError(nameof(model.NumeroDocumento), resultado.Mensaje);
+                else
+                    documento = resultado.Numero;
+            }
 
             if (telefono != "" && !FormatoTelefono.IsMatch(telefono))
                 ModelState.AddModelError(nameof(model.Telefono), "El teléfono debe tener entre 6 y 15 dígitos (puede llevar + y espacios).");
@@ -294,7 +290,7 @@ namespace WebApplication1.Controllers
                 ModelState.AddModelError(nameof(model.Edad), "La edad debe estar entre 0 y 120 años.");
 
             // La misma persona no puede tener dos reservas activas en el mismo viaje
-            if (reglaDoc is not null && ModelState.GetValidationState(nameof(model.NumeroDocumento)) != Microsoft.AspNetCore.Mvc.ModelBinding.ModelValidationState.Invalid)
+            if (creadorDoc is not null && ModelState.GetValidationState(nameof(model.NumeroDocumento)) != Microsoft.AspNetCore.Mvc.ModelBinding.ModelValidationState.Invalid)
             {
                 var repetida = await _db.Pasajeros.AsNoTracking()
                     .Where(p => p.NroDocumento == documento && p.TipoDocumento == tipoDoc

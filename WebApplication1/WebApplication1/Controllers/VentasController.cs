@@ -169,7 +169,8 @@ namespace WebApplication1.Controllers
                 new DatosEmpresa(p.Empresa.RazonSocial, p.Empresa.Ruc, p.Empresa.Direccion, p.Empresa.Telefono, p.Empresa.Correo));
 
             // Sin nombre de archivo: el navegador lo muestra en pantalla para verlo o imprimirlo
-            return File(ComprobantesPdf.Venta(datos, ExportacionUtil.Logo(_env)), ExportacionUtil.TipoPdf);
+            var archivo = new GeneradorComprobanteVenta(datos).Generar(ExportacionUtil.Logo(_env));
+            return File(archivo.Contenido, archivo.TipoContenido);
         }
 
         // Una venta es un pago de una reserva que no fue cancelada

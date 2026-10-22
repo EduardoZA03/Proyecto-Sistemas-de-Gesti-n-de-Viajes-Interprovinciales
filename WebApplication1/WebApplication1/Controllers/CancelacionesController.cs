@@ -168,7 +168,8 @@ namespace WebApplication1.Controllers
                 c.Total, c.Pagado, c.MontoReembolso, c.Pagado - c.MontoReembolso, porcentaje,
                 new DatosEmpresa(c.Empresa.RazonSocial, c.Empresa.Ruc, c.Empresa.Direccion, c.Empresa.Telefono, c.Empresa.Correo));
 
-            return File(ComprobantesPdf.Cancelacion(datos, ExportacionUtil.Logo(_env)), ExportacionUtil.TipoPdf);
+            var archivo = new GeneradorComprobanteCancelacion(datos).Generar(ExportacionUtil.Logo(_env));
+            return File(archivo.Contenido, archivo.TipoContenido);
         }
 
         private async Task<CancelacionesIndexVM> ConstruirAsync(CancelacionesIndexVM f)
