@@ -204,7 +204,7 @@ El script incluye **datos de ejemplo abundantes**:
 | Ciudades y rutas | 15 ciudades y 40 rutas, casi todas en ambos sentidos |
 | Buses | 12 (10 operativos y 2 en mantenimiento), de 36 a 48 asientos |
 | Viajes | 185, desde 18 días atrás hasta 14 días adelante |
-| Reservas | casi 3 000, con sus pasajeros, pagos (Efectivo, Yape, Tarjeta, Plin y Transferencia) y unas 250 cancelaciones |
+| Reservas | casi 3 000, con sus pasajeros, pagos (Efectivo, Yape, Tarjeta, Plin y Transferencia) y unas 175 cancelaciones |
 
 Cada bus hace un viaje al día en horario fijo y con su chofer fijo (ida, vuelta y un día de descanso), así que nunca se cruzan. Los viajes ya cumplidos quedan *Finalizados* con horas reales (cerca del 40 % llega con más de 15 minutos de retraso, para que el reporte de retrasos tenga qué mostrar), los de hoy que ya salieron quedan *En ruta* y el resto *Programados*. Alrededor del 5 % de los viajes están *Cancelados*.
 
