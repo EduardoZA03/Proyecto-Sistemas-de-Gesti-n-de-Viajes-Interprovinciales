@@ -1,6 +1,7 @@
 using System.Data;
 using System.Net.Mail;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebApplication1.Data;
@@ -10,6 +11,8 @@ using WebApplication1.Models.ViewModels;
 
 namespace WebApplication1.Controllers
 {
+    // El chofer no ve esta pantalla: solo el administrador y el vendedor
+    [Authorize(Roles = Roles.Personal)]
     public class ReservasController : Controller
     {
         // Letras (con tildes y ñ), espacios, punto, guion y apóstrofe; de 2 a 100 caracteres

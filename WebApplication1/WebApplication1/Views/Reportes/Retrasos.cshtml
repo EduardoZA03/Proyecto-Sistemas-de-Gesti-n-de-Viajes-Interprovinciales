@@ -1,0 +1,130 @@
+@model RetrasosVM
+@{
+    ViewData["Title"] = "Reporte de retrasos";
+
+    // Los mismos filtros que se están viendo viajan a la descarga
+    var consulta = new
+    {
+        FechaInicio = Model.FechaInicio?.ToString("yyyy-MM-dd"),
+        FechaFin = Model.FechaFin?.ToString("yyyy-MM-dd"),
+        Ruta = Model.Ruta,
+        Chofer = Model.Chofer
+    };
+    string Hora(DateTime? f) => f?.ToString("dd/MM HH:mm") ?? "--";
+}
+
+<nav class="text-muted small mb-2">INICIO &gt; <a asp-action="Index" class="text-muted text-decoration-none">REPORTES</a> &gt; <span class="text-dark fw-bold">RETRASOS</span></nav>
+<h4 class="fw-bold"><i class="fa-solid fa-clock me-2"></i>Reporte de retrasos</h4>
+<p class="text-muted">
+    Compara la llegada estimada de cada viaje (salida programada más la duración de la ruta) con la hora real que registró el chofer.
+    Se considera retraso una demora de más de 15 minutos.
+</p>
+
+@if (ViewData["Aviso"] != null)
+{
+    <div class="alert alert-warning">@ViewData["Aviso"]</div>
+}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h6 class="fw-bold text-teal mb-3">FILTROS</h6>
+        <form asp-action="Retrasos" method="post" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label">Fecha inicio</label>
+                <input asp-for="FechaInicio" type="date" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Fecha fin</label>
+                <input asp-for="FechaFin" type="date" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Ruta</label>
+                <select asp-for="Ruta" class="form-select">
+                    <option>Todas las rutas</option>
+                    @foreach (var r in Model.RutasDisponibles)
+                    {
+                        <option>@r</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Chofer</label>
+                <select asp-for="Chofer" class="form-select">
+                    <option>Todos los choferes</option>
+                    @foreach (var c in Model.ChoferesDisponibles)
+                    {
+                        <option>@c</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn chaski-btn-primary w-100"><i class="fa-solid fa-magnifying-glass me-1"></i> Buscar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body"><div class="text-muted small">VIAJES EVALUADOS</div><div class="fs-4 fw-bold">@Model.Evaluados</div></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body"><div class="text-muted small">CON RETRASO</div><div class="fs-4 fw-bold">@Model.ConRetraso</div>
+        <div class="text-muted small">@(Model.Evaluados == 0 ? "0" : (100 * Model.ConRetraso / Model.Evaluados).ToString()) % de los evaluados</div></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body"><div class="text-muted small">RETRASO PROMEDIO</div><div class="fs-4 fw-bold">@Model.PromedioRetraso.ToString("0") min</div><div class="text-muted small">solo de los retrasados</div></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body"><div class="text-muted small">MAYOR RETRASO</div><div class="fs-4 fw-bold">@Model.MayorRetraso min</div></div></div></div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+            <h6 class="fw-bold text-teal mb-0">VIAJES FINALIZADOS <span class="text-muted fw-normal">(@Model.Filas.Count)</span></h6>
+            <div class="d-flex gap-2">
+                <a class="btn btn-sm btn-outline-danger" href="@Url.Action("RetrasosPdf", consulta)"><i class="fa-solid fa-file-pdf me-1"></i>PDF</a>
+                <a class="btn btn-sm btn-outline-success" href="@Url.Action("RetrasosExcel", consulta)"><i class="fa-solid fa-file-excel me-1"></i>Excel</a>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table align-middle table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ruta</th><th>Bus</th><th>Chofer</th>
+                        <th>Salida programada</th><th>Salida real</th>
+                        <th>Llegada estimada</th><th>Llegada real</th>
+                        <th class="text-end">Retraso</th><th>Condición</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in Model.Filas)
+                    {
+                        var badge = f.Condicion switch
+                        {
+                            "Retrasado" => "bg-danger-subtle text-danger",
+                            "Adelantado" => "bg-info-subtle text-info",
+                            _ => "bg-success-subtle text-success"
+                        };
+                        <tr>
+                            <td class="fw-semibold">@f.Ruta</td>
+                            <td>@f.Placa</td>
+                            <td>@f.Chofer</td>
+                            <td class="text-nowrap">@Hora(f.SalidaProgramada)</td>
+                            <td class="text-nowrap">@Hora(f.SalidaReal)</td>
+                            <td class="text-nowrap">@Hora(f.LlegadaEstimada)</td>
+                            <td class="text-nowrap">@Hora(f.LlegadaReal)</td>
+                            <td class="text-end text-nowrap fw-semibold">@(f.RetrasoLlegada > 0 ? "+" : "")@f.RetrasoLlegada min</td>
+                            <td><span class="badge @badge">@f.Condicion</span></td>
+                        </tr>
+                    }
+                    @if (!Model.Filas.Any())
+                    {
+                        <tr><td colspan="9" class="text-center text-muted py-4">No hay viajes con hora real de llegada para esos filtros.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (Model.SinHoraReal > 0)
+        {
+            <p class="small text-muted mb-0">
+                <i class="fa-solid fa-circle-info me-1"></i>
+                Otros @Model.SinHoraReal viaje(s) finalizados no tienen hora real de llegada (se cerraron solos o desde el listado) y no se pueden medir.
+            </p>
+        }
+    </div>
+</div>

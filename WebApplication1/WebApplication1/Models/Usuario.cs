@@ -21,5 +21,6 @@
 
         public Rol Rol { get; set; } = null!;
         public ICollection<Reserva> Reservas { get; set; } = new List<Reserva>();
+        public ICollection<Viaje> ViajesComoChofer { get; set; } = new List<Viaje>();
     }
 }

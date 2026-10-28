@@ -12,7 +12,13 @@
         public decimal PrecioBase { get; set; }
         public string Estado { get; set; } = string.Empty;
 
+        // Control de viajes: quién lo conduce y a qué hora salió y llegó de verdad (null hasta que se registra)
+        public int? IdChofer { get; set; }
+        public DateTime? FechaHoraSalidaReal { get; set; }
+        public DateTime? FechaHoraLlegadaReal { get; set; }
+
         public Ruta Ruta { get; set; } = null!;
+        public Usuario? Chofer { get; set; }
         public Bus Bus { get; set; } = null!;
         public ICollection<Tarifa> Tarifas { get; set; } = new List<Tarifa>();
         public ICollection<Reserva> Reservas { get; set; } = new List<Reserva>();

@@ -130,8 +130,8 @@ namespace WebApplication1.Controllers
         public async Task<IActionResult> Registro(RegistroVM model)
         {
             // Los clientes están en espera: por ahora solo se crean cuentas del personal
-            if (model.Rol != Roles.Administrador && model.Rol != Roles.Vendedor)
-                ModelState.AddModelError(nameof(model.Rol), "Elige Administrador o Vendedor.");
+            if (model.Rol != Roles.Administrador && model.Rol != Roles.Vendedor && model.Rol != Roles.Chofer)
+                ModelState.AddModelError(nameof(model.Rol), "Elige Administrador, Vendedor o Chofer.");
 
             if (ModelState.GetValidationState(nameof(model.Contrasena)) != Microsoft.AspNetCore.Mvc.ModelBinding.ModelValidationState.Invalid
                 && Seguridad.ValidarContrasena(model.Contrasena) is { } errorClave)

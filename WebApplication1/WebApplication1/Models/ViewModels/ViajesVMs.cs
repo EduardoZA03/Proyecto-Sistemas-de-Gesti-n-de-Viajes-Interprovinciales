@@ -12,6 +12,7 @@ namespace WebApplication1.Models.ViewModels
         public DateTime Salida { get; set; }
         public decimal PrecioBase { get; set; }
         public string Estado { get; set; } = string.Empty;
+        public string Chofer { get; set; } = string.Empty;
         public int Vendidos { get; set; }
         public int Capacidad { get; set; }
         public int ReservasActivas { get; set; }
@@ -44,6 +45,9 @@ namespace WebApplication1.Models.ViewModels
         [Required(ErrorMessage = "Elige un bus.")]
         public int? IdBus { get; set; }
 
+        // Opcional: el chofer que conducirá el viaje (solo se ofrecen los que están libres a esa hora)
+        public int? IdChofer { get; set; }
+
         [Required(ErrorMessage = "Elige la fecha de salida.")]
         public DateTime? Fecha { get; set; }
 
@@ -57,5 +61,6 @@ namespace WebApplication1.Models.ViewModels
         // Opciones de los desplegables (no vienen del formulario)
         public List<SelectListItem> Rutas { get; set; } = new();
         public List<SelectListItem> Buses { get; set; } = new();
+        public List<SelectListItem> Choferes { get; set; } = new();
     }
 }
