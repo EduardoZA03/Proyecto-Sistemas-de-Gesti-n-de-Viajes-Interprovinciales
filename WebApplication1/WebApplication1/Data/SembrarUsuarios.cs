@@ -10,7 +10,19 @@ namespace WebApplication1.Data
         {
             ["admin"] = "admin123",
             ["vendedor"] = "vendedor123",
-            ["cliente"] = "cliente123"
+            ["cliente"] = "cliente123",
+            ["vendedor2"] = "vendedor123",
+            ["vendedor3"] = "vendedor123",
+            ["chofer1"] = "chofer123",
+            ["chofer2"] = "chofer123",
+            ["chofer3"] = "chofer123",
+            ["chofer4"] = "chofer123",
+            ["chofer5"] = "chofer123",
+            ["chofer6"] = "chofer123",
+            ["chofer7"] = "chofer123",
+            ["chofer8"] = "chofer123",
+            ["chofer9"] = "chofer123",
+            ["chofer10"] = "chofer123"
         };
 
         public static async Task EjecutarAsync(IServiceProvider servicios)

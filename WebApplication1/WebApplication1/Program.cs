@@ -13,11 +13,12 @@ QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 // Add services to the container.
 builder.Services.AddControllersWithViews(options =>
 {
-    // Todo el sistema exige sesión iniciada y rol del personal (Administrador o Vendedor).
+    // Todo el sistema exige sesión iniciada y rol del personal (Administrador, Vendedor o Chofer).
+    // Las pantallas de ventas llevan [Authorize(Roles = Roles.Personal)] y las del chofer, su propio rol.
     // Las acciones públicas (login) llevan [AllowAnonymous].
     var politica = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
-        .RequireRole(Roles.Administrador, Roles.Vendedor)
+        .RequireRole(Roles.Administrador, Roles.Vendedor, Roles.Chofer)
         .Build();
     options.Filters.Add(new AuthorizeFilter(politica));
 
@@ -29,6 +30,13 @@ builder.Services.AddDbContext<ChaskiRutaContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ChaskiRuta")));
 
 builder.Services.AddMemoryCache();
+
+// Singleton: los tiempos de los viajes se leen una sola vez del appsettings y se comparten en todo el sistema
+ConfiguracionViajes.Instancia.Cargar(builder.Configuration);
+
+// Marcar partida y llegada de un viaje, y servicio que pasa solo los viajes a "En ruta" y "Finalizado"
+builder.Services.AddScoped<ControlViajes>();
+builder.Services.AddHostedService<ActualizadorEstadoViajes>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

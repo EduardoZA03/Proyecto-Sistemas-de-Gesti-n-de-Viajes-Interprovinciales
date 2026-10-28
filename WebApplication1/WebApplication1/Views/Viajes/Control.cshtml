@@ -1,0 +1,66 @@
+@model ControlViajesVM
+@{
+    ViewData["Title"] = "Control de viajes";
+    var fecha = Model.Fecha.ToString("yyyy-MM-dd");
+    var anterior = Model.Fecha.AddDays(-1).ToString("yyyy-MM-dd");
+    var siguiente = Model.Fecha.AddDays(1).ToString("yyyy-MM-dd");
+    var etiquetaDia = Model.EsHoy ? "hoy" : Model.Fecha.ToString("dd/MM/yyyy");
+}
+
+<nav class="text-muted small mb-2">INICIO &gt; <span class="text-dark fw-bold">CONTROL DE VIAJES</span></nav>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
+    <h4 class="fw-bold mb-0"><i class="fa-solid fa-tower-broadcast me-2"></i>Control de viajes</h4>
+    <form asp-action="Control" method="get" class="d-flex align-items-center gap-2">
+        <a asp-action="Control" asp-route-fecha="@anterior" class="btn btn-outline-secondary" title="Día anterior"><i class="fa-solid fa-chevron-left"></i></a>
+        <input name="fecha" type="date" value="@fecha" class="form-control" onchange="this.form.submit()" />
+        <a asp-action="Control" asp-route-fecha="@siguiente" class="btn btn-outline-secondary" title="Día siguiente"><i class="fa-solid fa-chevron-right"></i></a>
+        @if (!Model.EsHoy)
+        {
+            <a asp-action="Control" class="btn btn-outline-primary">Hoy</a>
+        }
+    </form>
+</div>
+<p class="text-muted">
+    Seguimiento de los viajes de @etiquetaDia: cuáles están por salir, cuáles van en ruta y cuáles ya llegaron.
+    El sistema pasa solo los viajes a «En ruta» a la hora de salida y los cierra cuando pasa su llegada estimada con 3 horas de margen,
+    revisando cada @(Model.IntervaloSegundos >= 60 ? (Model.IntervaloSegundos / 60) + " min" : Model.IntervaloSegundos + " s")
+    @(Model.UltimaActualizacionAutomatica is { } u ? $"(última revisión a las {u:HH:mm:ss})." : "(aún no hizo su primera revisión).")
+    La hora real de partida y llegada la registra el chofer o se marca desde aquí.
+</p>
+
+@if (TempData["Mensaje"] != null)
+{
+    <div class="alert alert-success">@TempData["Mensaje"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body"><div class="text-muted small">POR SALIR</div><div class="fs-4 fw-bold">@Model.PorSalir.Count</div></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body"><div class="text-muted small">EN RUTA</div><div class="fs-4 fw-bold">@Model.EnRuta.Count</div></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body"><div class="text-muted small">LLEGARON</div><div class="fs-4 fw-bold">@Model.Llegados.Count</div></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body"><div class="text-muted small">CANCELADOS</div><div class="fs-4 fw-bold">@Model.Cancelados</div></div></div></div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h6 class="fw-bold text-teal mb-3">POR SALIR <span class="text-muted fw-normal">(@Model.PorSalir.Count)</span></h6>
+        @await Html.PartialAsync("_TablaControl", (Model.PorSalir, fecha, "No hay viajes por salir en esta fecha."))
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h6 class="fw-bold text-teal mb-3">EN RUTA <span class="text-muted fw-normal">(@Model.EnRuta.Count)</span></h6>
+        @await Html.PartialAsync("_TablaControl", (Model.EnRuta, fecha, "No hay viajes en ruta."))
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h6 class="fw-bold text-teal mb-3">LLEGARON <span class="text-muted fw-normal">(@Model.Llegados.Count)</span></h6>
+        @await Html.PartialAsync("_TablaControl", (Model.Llegados, fecha, "Todavía no llegó ningún viaje en esta fecha."))
+    </div>
+</div>

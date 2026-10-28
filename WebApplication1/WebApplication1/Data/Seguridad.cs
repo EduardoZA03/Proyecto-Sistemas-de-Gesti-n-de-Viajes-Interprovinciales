@@ -16,6 +16,10 @@ namespace WebApplication1.Data
         public const string Administrador = "Administrador";
         public const string Vendedor = "Vendedor";
         public const string Cliente = "Cliente";   // en espera: aún no puede entrar al panel
+        public const string Chofer = "Chofer";     // solo ve sus viajes y marca la partida y la llegada
+
+        // Personal de ventas: ve reservas, ventas y cancelaciones
+        public const string Personal = Administrador + "," + Vendedor;
     }
 
     public static class Seguridad

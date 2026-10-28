@@ -16,6 +16,10 @@ namespace WebApplication1.Controllers
 
         public async Task<IActionResult> Index()
         {
+            // El chofer no tiene panel de ventas: va directo a sus viajes
+            if (User.IsInRole(Roles.Chofer))
+                return RedirectToAction("Index", "Chofer");
+
             var hoy = DateTime.Today;
             var manana = hoy.AddDays(1);
 

@@ -27,6 +27,14 @@
                             <span asp-validation-for="IdBus" class="text-danger small"></span>
                             <div class="form-text">Solo aparecen los buses operativos. El sistema avisa si el bus ya tiene otro viaje a esa hora.</div>
                         </div>
+                        <div class="col-12">
+                            <label asp-for="IdChofer" class="form-label">Chofer <span class="text-muted small">(opcional)</span></label>
+                            <select asp-for="IdChofer" asp-items="Model.Choferes" class="form-select">
+                                <option value="">— Sin chofer asignado —</option>
+                            </select>
+                            <span asp-validation-for="IdChofer" class="text-danger small"></span>
+                            <div class="form-text" id="avisoDisponibles">Al elegir ruta, fecha y hora, solo se ofrecen los buses y choferes que están libres en ese horario.</div>
+                        </div>
                         <div class="col-md-4">
                             <label asp-for="Fecha" class="form-label">Fecha de salida</label>
                             <input asp-for="Fecha" type="date" class="form-control" />
@@ -75,6 +83,58 @@
 
 @section Scripts {
     <script>
+        // Al cambiar la ruta, la fecha o la hora, se ofrecen solo los buses y choferes libres en ese horario
+        (function () {
+            const ruta = document.getElementById('IdRuta');
+            const fecha = document.getElementById('Fecha');
+            const hora = document.getElementById('Hora');
+            const bus = document.getElementById('IdBus');
+            const chofer = document.getElementById('IdChofer');
+            const aviso = document.getElementById('avisoDisponibles');
+            const idViaje = '@Model.IdViaje';
+            let ultimo = 0;
+
+            function llenar(select, items, textoVacio) {
+                const actual = select.value;
+                select.innerHTML = '';
+                const vacio = document.createElement('option');
+                vacio.value = ''; vacio.textContent = textoVacio;
+                select.appendChild(vacio);
+                items.forEach(function (i) {
+                    const o = document.createElement('option');
+                    o.value = i.id; o.textContent = i.texto;
+                    select.appendChild(o);
+                });
+                const sigueLibre = items.some(function (i) { return String(i.id) === actual; });
+                select.value = sigueLibre ? actual : '';
+                return actual !== '' && !sigueLibre;
+            }
+
+            async function refrescar() {
+                if (!ruta.value || !fecha.value || !hora.value) return;
+                const n = ++ultimo;
+                const url = '@Url.Action("Disponibles")' + '?fecha=' + encodeURIComponent(fecha.value) + '&hora=' + encodeURIComponent(hora.value)
+                          + '&idRuta=' + encodeURIComponent(ruta.value) + '&idViaje=' + encodeURIComponent(idViaje);
+                let datos;
+                try {
+                    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                    if (!r.ok) return;
+                    datos = await r.json();
+                } catch (e) { return; }
+                if (n !== ultimo) return;
+
+                const perdioBus = llenar(bus, datos.buses, '— Elige un bus —');
+                const perdioChofer = llenar(chofer, datos.choferes, '— Sin chofer asignado —');
+                let texto = datos.buses.length + ' bus(es) y ' + datos.choferes.length + ' chofer(es) libres en ese horario.';
+                if (perdioBus) texto += ' El bus que habías elegido ya no está libre: elige otro.';
+                if (perdioChofer) texto += ' El chofer que habías elegido ya no está libre: elige otro.';
+                aviso.textContent = texto;
+            }
+
+            [ruta, fecha, hora].forEach(function (e) { e.addEventListener('change', refrescar); });
+            refrescar();
+        })();
+
         (function () {
             const input = document.getElementById('precioBase');
             const celdas = document.querySelectorAll('[data-factor]');

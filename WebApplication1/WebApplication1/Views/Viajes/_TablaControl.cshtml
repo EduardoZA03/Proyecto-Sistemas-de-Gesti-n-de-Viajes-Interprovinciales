@@ -1,0 +1,108 @@
+@model (List<ControlViajeFilaVM> Filas, string Fecha, string Vacio)
+@{
+    string Hora(DateTime? f) => f?.ToString("HH:mm") ?? "--:--";
+    string DiaHora(DateTime f) => f.ToString("dd/MM HH:mm");
+}
+
+<div class="table-responsive">
+    <table class="table align-middle table-hover mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>Ruta</th>
+                <th>Bus y chofer</th>
+                <th>Salida</th>
+                <th>Llegada</th>
+                <th>Estado</th>
+                <th class="text-end">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var v in Model.Filas)
+            {
+                <tr>
+                    <td class="fw-semibold">@v.Ruta<br /><span class="small text-muted fw-normal">@v.Vendidos/@v.Capacidad asientos</span></td>
+                    <td>
+                        @v.Placa <span class="text-muted small">· @v.Servicio</span><br />
+                        @if (string.IsNullOrEmpty(v.Chofer))
+                        {
+                            <span class="small text-warning"><i class="fa-solid fa-triangle-exclamation me-1"></i>Sin chofer</span>
+                        }
+                        else
+                        {
+                            <span class="small text-muted"><i class="fa-solid fa-user me-1"></i>@v.Chofer</span>
+                        }
+                    </td>
+                    <td class="text-nowrap">
+                        @DiaHora(v.Salida)<br />
+                        <span class="small text-muted">real @Hora(v.SalidaReal)</span>
+                        @if (v.RetrasoSalida > 15)
+                        {
+                            <span class="small text-danger"> (+@v.RetrasoSalida min)</span>
+                        }
+                    </td>
+                    <td class="text-nowrap">
+                        @DiaHora(v.LlegadaEstimada)<br />
+                        <span class="small text-muted">real @Hora(v.LlegadaReal)</span>
+                        @if (v.RetrasoLlegada > 15)
+                        {
+                            <span class="small text-danger"> (+@v.RetrasoLlegada min)</span>
+                        }
+                    </td>
+                    <td>
+                        @if (v.Estado == "Programado")
+                        {
+                            if (v.Atrasado)
+                            {
+                                <span class="badge bg-warning-subtle text-warning">Ya debió salir</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success-subtle text-success">Por salir</span>
+                            }
+                        }
+                        else if (v.Estado == "En ruta")
+                        {
+                            <span class="badge bg-info-subtle text-info">En ruta</span>
+                        }
+                        else if (v.RetrasoLlegada is null)
+                        {
+                            <span class="badge bg-secondary-subtle text-secondary">Llegó (sin hora registrada)</span>
+                        }
+                        else if (v.RetrasoLlegada > 15)
+                        {
+                            <span class="badge bg-danger-subtle text-danger">Llegó con retraso</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success-subtle text-success">Llegó a tiempo</span>
+                        }
+                    </td>
+                    <td class="text-end text-nowrap">
+                        @if (v.PuedeMarcarPartida)
+                        {
+                            <form asp-action="Partio" asp-route-id="@v.IdViaje" method="post" class="d-inline">
+                                <input type="hidden" name="volver" value="@Model.Fecha" />
+                                <button type="submit" class="btn btn-sm btn-outline-success">
+                                    <i class="fa-solid fa-play me-1"></i> @(v.Estado == "En ruta" ? "Registrar partida" : "Marcar partida")
+                                </button>
+                            </form>
+                        }
+                        @if (v.PuedeMarcarLlegada)
+                        {
+                            <form asp-action="Llego" asp-route-id="@v.IdViaje" method="post" class="d-inline">
+                                <input type="hidden" name="volver" value="@Model.Fecha" />
+                                <button type="submit" class="btn btn-sm btn-success">
+                                    <i class="fa-solid fa-flag-checkered me-1"></i> Marcar llegada
+                                </button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (!Model.Filas.Any())
+            {
+                <tr><td colspan="6" class="text-center text-muted py-3">@Model.Vacio</td></tr>
+            }
+        </tbody>
+    </table>
+</div>

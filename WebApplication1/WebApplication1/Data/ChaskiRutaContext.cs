@@ -71,6 +71,8 @@ namespace WebApplication1.Data
                 .HasForeignKey(e => e.IdBus).OnDelete(DeleteBehavior.Cascade);
             mb.Entity<Viaje>().HasOne(e => e.Ruta).WithMany(r => r.Viajes)
                 .HasForeignKey(e => e.IdRuta).OnDelete(DeleteBehavior.Restrict);
+            mb.Entity<Viaje>().HasOne(e => e.Chofer).WithMany(u => u.ViajesComoChofer)
+                .HasForeignKey(e => e.IdChofer).OnDelete(DeleteBehavior.Restrict);
             mb.Entity<Viaje>().HasOne(e => e.Bus).WithMany(r => r.Viajes)
                 .HasForeignKey(e => e.IdBus).OnDelete(DeleteBehavior.Restrict);
             mb.Entity<Tarifa>().HasOne(e => e.Viaje).WithMany(r => r.Tarifas)
@@ -109,6 +111,8 @@ namespace WebApplication1.Data
             mb.Entity<Pasajero>().Property(p => p.FechaNacimiento).HasColumnType("date");
 
             mb.Entity<Viaje>().Property(v => v.PrecioBase).HasPrecision(10, 2);
+            mb.Entity<Viaje>().Property(v => v.FechaHoraSalidaReal).HasColumnType("datetime2");
+            mb.Entity<Viaje>().Property(v => v.FechaHoraLlegadaReal).HasColumnType("datetime2");
             mb.Entity<Tarifa>().Property(t => t.Precio).HasPrecision(10, 2);
             mb.Entity<Reserva>().Property(r => r.Total).HasPrecision(10, 2);
             mb.Entity<ReservaAsiento>().Property(r => r.Precio).HasPrecision(10, 2);

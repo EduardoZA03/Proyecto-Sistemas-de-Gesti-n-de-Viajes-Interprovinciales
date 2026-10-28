@@ -9,24 +9,25 @@ using WebApplication1.Models.ViewModels;
 
 namespace WebApplication1.Controllers
 {
-    // Programación de viajes: solo el administrador
+    // Programación y control de viajes: solo el administrador
     [Authorize(Roles = Roles.Administrador)]
     public class ViajesController : Controller
     {
-        // Margen para que el bus llegue, descanse y se prepare antes de otro viaje
-        private static readonly TimeSpan Descanso = TimeSpan.FromHours(2);
-        private static readonly TimeSpan DuracionPorDefecto = TimeSpan.FromHours(12);
-
         private readonly ChaskiRutaContext _db;
+        private readonly ControlViajes _control;
 
-        public ViajesController(ChaskiRutaContext db) => _db = db;
+        public ViajesController(ChaskiRutaContext db, ControlViajes control)
+        {
+            _db = db;
+            _control = control;
+        }
 
         // ---------- LISTADO ----------
 
         [HttpGet]
         public async Task<IActionResult> Index(string? estado, DateTime? desde, DateTime? hasta, int? idRuta)
         {
-            estado ??= "Programado";
+            estado ??= EstadosViaje.Programado;
             var q = _db.Viajes.AsNoTracking().AsQueryable();
 
             if (Formato.FiltroOpcional(estado) is { } e)
@@ -44,8 +45,8 @@ namespace WebApplication1.Controllers
             if (idRuta is { } r)
                 q = q.Where(v => v.IdRuta == r);
 
-            // Los programados se ven del más próximo al más lejano; el resto, del más reciente al más antiguo
-            var ordenado = estado == "Programado"
+            // Los programados y los que van en ruta se ven del más próximo al más lejano; el resto, del más reciente al más antiguo
+            var ordenado = estado == EstadosViaje.Programado || estado == EstadosViaje.EnRuta
                 ? q.OrderBy(v => v.FechaSalida).ThenBy(v => v.HoraSalida)
                 : q.OrderByDescending(v => v.FechaSalida).ThenByDescending(v => v.HoraSalida);
 
@@ -56,6 +57,7 @@ namespace WebApplication1.Controllers
                 Destino = v.Ruta.Destino.NombreCiudad,
                 v.Bus.Placa,
                 v.Bus.Servicio,
+                Chofer = v.Chofer == null ? "" : v.Chofer.Nombres + " " + v.Chofer.Apellidos,
                 v.FechaSalida,
                 v.HoraSalida,
                 v.PrecioBase,
@@ -76,7 +78,7 @@ namespace WebApplication1.Controllers
                 Viajes = filas.Select(x =>
                 {
                     var salida = x.FechaSalida.Add(x.HoraSalida);
-                    var programado = x.Estado == "Programado";
+                    var programado = x.Estado == EstadosViaje.Programado;
                     var yaSalio = salida <= ahora;
                     return new ViajeFilaVM
                     {
@@ -84,6 +86,7 @@ namespace WebApplication1.Controllers
                         Ruta = $"{x.Origen} - {x.Destino}",
                         Placa = x.Placa,
                         Servicio = x.Servicio,
+                        Chofer = x.Chofer,
                         Salida = salida,
                         PrecioBase = x.PrecioBase,
                         Estado = x.Estado,
@@ -93,11 +96,95 @@ namespace WebApplication1.Controllers
                         YaSalio = yaSalio,
                         PuedeEditar = programado && !yaSalio && x.ReservasActivas == 0,
                         PuedeCancelar = programado && !yaSalio && x.ReservasActivas == 0,
-                        PuedeFinalizar = programado && yaSalio
+                        PuedeFinalizar = (programado && yaSalio) || x.Estado == EstadosViaje.EnRuta
                     };
                 }).ToList()
             };
             return View(model);
+        }
+
+        // ---------- CONTROL DEL DÍA ----------
+        // Qué viajes están por salir, cuáles van en ruta y cuáles ya llegaron en la fecha elegida.
+
+        [HttpGet]
+        public async Task<IActionResult> Control(DateTime? fecha)
+        {
+            var dia = (fecha ?? DateTime.Today).Date;
+            var hoy = DateTime.Today;
+            var ahora = DateTime.Now;
+
+            // Un viaje largo sale un día y llega otro: se mira unos días hacia atrás
+            var q = _db.Viajes.AsNoTracking().Where(v =>
+                v.Estado != EstadosViaje.Cancelado
+                && ((v.FechaSalida >= dia.AddDays(-3) && v.FechaSalida <= dia) || v.Estado == EstadosViaje.EnRuta));
+            var filas = await q.ComoFilasControlAsync(ahora);
+
+            var model = new ControlViajesVM
+            {
+                Fecha = dia,
+                EsHoy = dia == hoy,
+                PorSalir = filas.Where(f => f.Estado == EstadosViaje.Programado && f.Salida.Date == dia).ToList(),
+                EnRuta = filas.Where(f => f.Estado == EstadosViaje.EnRuta
+                                          && (dia == hoy || (f.Salida.Date <= dia && f.LlegadaEstimada.Date >= dia))).ToList(),
+                Llegados = filas.Where(f => f.Estado == EstadosViaje.Finalizado
+                                            && (f.Salida.Date == dia || (f.LlegadaReal ?? f.LlegadaEstimada).Date == dia)).ToList(),
+                Cancelados = await _db.Viajes.CountAsync(v => v.Estado == EstadosViaje.Cancelado && v.FechaSalida == dia),
+                UltimaActualizacionAutomatica = ActualizadorEstadoViajes.UltimaEjecucion,
+                IntervaloSegundos = (int)ActualizadorEstadoViajes.Intervalo.TotalSeconds
+            };
+            return View(model);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Partio(int id, string? volver)
+        {
+            var r = await _control.MarcarPartidaAsync(id);
+            TempData[r.Ok ? "Mensaje" : "Error"] = r.Mensaje;
+            return RedirectToAction(nameof(Control), new { fecha = volver });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Llego(int id, string? volver)
+        {
+            var r = await _control.MarcarLlegadaAsync(id);
+            TempData[r.Ok ? "Mensaje" : "Error"] = r.Mensaje;
+            return RedirectToAction(nameof(Control), new { fecha = volver });
+        }
+
+        // ---------- DISPONIBLES (lo usa el formulario) ----------
+        // Buses operativos y choferes activos que no tienen otro viaje en el horario elegido.
+
+        [HttpGet]
+        public async Task<IActionResult> Disponibles(DateTime? fecha, string? hora, int? idRuta, int? idViaje)
+        {
+            var ruta = idRuta is null ? null : await _db.Rutas.AsNoTracking().FirstOrDefaultAsync(r => r.IdRuta == idRuta);
+            var filtra = fecha is not null && ruta is not null && TimeSpan.TryParse(hora, CultureInfo.InvariantCulture, out _);
+
+            DateTime salida = default, fin = default;
+            if (filtra)
+            {
+                salida = fecha!.Value.Date.Add(TimeSpan.Parse(hora!, CultureInfo.InvariantCulture));
+                fin = salida + TiempoViaje.Duracion(ruta!.DuracionEstimada) + TiempoViaje.Descanso;
+            }
+
+            var buses = new List<object>();
+            foreach (var b in await _db.Buses.AsNoTracking().Where(b => b.Estado == "Operativo").OrderBy(b => b.Placa).ToListAsync())
+            {
+                if (filtra && await Disponibilidad.BusOcupadoAsync(_db, b.IdBus, salida, fin, idViaje) is not null) continue;
+                buses.Add(new { id = b.IdBus, texto = TextoBus(b.Placa, b.Marca, b.Modelo, b.Servicio, b.CapacidadAsientos) });
+            }
+
+            var choferes = new List<object>();
+            var activos = await _db.Usuarios.AsNoTracking()
+                .Where(u => u.Estado == "Activo" && u.Rol.NombreRol == Roles.Chofer)
+                .OrderBy(u => u.Apellidos).ThenBy(u => u.Nombres).ToListAsync();
+            foreach (var c in activos)
+            {
+                if (filtra && await Disponibilidad.ChoferOcupadoAsync(_db, c.IdUsuario, salida, fin, idViaje) is not null) continue;
+                choferes.Add(new { id = c.IdUsuario, texto = TextoChofer(c) });
+            }
+
+            return Json(new { filtrado = filtra, buses, choferes });
         }
 
         // ---------- NUEVO ----------
@@ -110,7 +197,7 @@ namespace WebApplication1.Controllers
                 Fecha = DateTime.Today.AddDays(1),
                 Hora = new TimeSpan(8, 0, 0)
             };
-            await CargarListasAsync(model, null);
+            await CargarListasAsync(model, null, null);
             return View("Formulario", model);
         }
 
@@ -120,7 +207,7 @@ namespace WebApplication1.Controllers
             var precio = await ValidarAsync(model, null);
             if (!ModelState.IsValid || precio is null)
             {
-                await CargarListasAsync(model, null);
+                await CargarListasAsync(model, null, null);
                 return View("Formulario", model);
             }
 
@@ -129,12 +216,13 @@ namespace WebApplication1.Controllers
             {
                 IdRuta = ruta.IdRuta,
                 IdBus = model.IdBus!.Value,
+                IdChofer = model.IdChofer,
                 IdOrigen = ruta.IdOrigen,
                 IdDestino = ruta.IdDestino,
                 FechaSalida = model.Fecha!.Value.Date,
                 HoraSalida = model.Hora!.Value,
                 PrecioBase = precio.Value,
-                Estado = "Programado"
+                Estado = EstadosViaje.Programado
             };
             foreach (var (tipo, factor) in TarifasEstandar.Todas)
                 viaje.Tarifas.Add(new Tarifa { TipoTarifa = tipo, Precio = TarifasEstandar.Precio(precio.Value, factor), Estado = "Activo" });
@@ -164,11 +252,12 @@ namespace WebApplication1.Controllers
                 IdViaje = viaje.IdViaje,
                 IdRuta = viaje.IdRuta,
                 IdBus = viaje.IdBus,
+                IdChofer = viaje.IdChofer,
                 Fecha = viaje.FechaSalida,
                 Hora = viaje.HoraSalida,
                 PrecioBase = viaje.PrecioBase.ToString("0.00", CultureInfo.InvariantCulture)
             };
-            await CargarListasAsync(model, viaje.IdBus);
+            await CargarListasAsync(model, viaje.IdBus, viaje.IdChofer);
             return View("Formulario", model);
         }
 
@@ -187,7 +276,7 @@ namespace WebApplication1.Controllers
             var precio = await ValidarAsync(model, id);
             if (!ModelState.IsValid || precio is null)
             {
-                await CargarListasAsync(model, viaje.IdBus);
+                await CargarListasAsync(model, viaje.IdBus, viaje.IdChofer);
                 return View("Formulario", model);
             }
 
@@ -196,6 +285,7 @@ namespace WebApplication1.Controllers
             viaje.IdOrigen = ruta.IdOrigen;
             viaje.IdDestino = ruta.IdDestino;
             viaje.IdBus = model.IdBus!.Value;
+            viaje.IdChofer = model.IdChofer;
             viaje.FechaSalida = model.Fecha!.Value.Date;
             viaje.HoraSalida = model.Hora!.Value;
             viaje.PrecioBase = precio.Value;
@@ -227,24 +317,31 @@ namespace WebApplication1.Controllers
                 TempData["Error"] = motivo.Replace("modificar", "cancelar");
             else
             {
-                viaje.Estado = "Cancelado";
+                viaje.Estado = EstadosViaje.Cancelado;
                 await _db.SaveChangesAsync();
                 TempData["Mensaje"] = "Viaje cancelado.";
             }
             return RedirectToAction(nameof(Index));
         }
 
+        // Si va en ruta, registra la llegada (con su hora real). Si estaba programado y la hora de salida ya
+        // pasó, lo cierra sin horas reales.
         [HttpPost]
         public async Task<IActionResult> Finalizar(int id)
         {
             var viaje = await _db.Viajes.FirstOrDefaultAsync(v => v.IdViaje == id);
             if (viaje is null) return NotFound();
 
-            if (viaje.Estado != "Programado" || viaje.FechaSalida.Add(viaje.HoraSalida) > DateTime.Now)
-                TempData["Error"] = "Solo se puede finalizar un viaje programado que ya salió.";
+            if (viaje.Estado == EstadosViaje.EnRuta)
+            {
+                var r = await _control.MarcarLlegadaAsync(id);
+                TempData[r.Ok ? "Mensaje" : "Error"] = r.Mensaje;
+            }
+            else if (viaje.Estado != EstadosViaje.Programado || TiempoViaje.Salida(viaje) > DateTime.Now)
+                TempData["Error"] = "Solo se puede finalizar un viaje que ya salió.";
             else
             {
-                viaje.Estado = "Finalizado";
+                viaje.Estado = EstadosViaje.Finalizado;
                 await _db.SaveChangesAsync();
                 TempData["Mensaje"] = "Viaje marcado como finalizado.";
             }
@@ -256,9 +353,9 @@ namespace WebApplication1.Controllers
         // null si se puede modificar; si no, el motivo
         private async Task<string?> MotivoNoEditableAsync(Viaje viaje)
         {
-            if (viaje.Estado != "Programado")
+            if (viaje.Estado != EstadosViaje.Programado)
                 return $"No se puede modificar un viaje {viaje.Estado.ToLowerInvariant()}.";
-            if (viaje.FechaSalida.Add(viaje.HoraSalida) <= DateTime.Now)
+            if (TiempoViaje.Salida(viaje) <= DateTime.Now)
                 return "No se puede modificar un viaje que ya salió.";
             var activas = await _db.Reservas.CountAsync(r => r.IdViaje == viaje.IdViaje && r.Estado != "Cancelada");
             if (activas > 0)
@@ -297,44 +394,48 @@ namespace WebApplication1.Controllers
                     ModelState.AddModelError(nameof(m.IdBus), $"El bus {bus.Placa} no está operativo ({bus.Estado}).");
             }
 
+            Usuario? chofer = null;
+            if (m.IdChofer is { } idChofer)
+            {
+                chofer = await _db.Usuarios.AsNoTracking().Include(u => u.Rol).FirstOrDefaultAsync(u => u.IdUsuario == idChofer);
+                if (chofer is null || chofer.Rol.NombreRol != Roles.Chofer || chofer.Estado != "Activo")
+                    ModelState.AddModelError(nameof(m.IdChofer), "El chofer elegido no existe o está inactivo.");
+            }
+
             var salida = m.Fecha!.Value.Date.Add(m.Hora!.Value);
             if (salida <= DateTime.Now)
                 ModelState.AddModelError(nameof(m.Fecha), "La salida debe ser en el futuro.");
 
             if (!ModelState.IsValid || ruta is null || bus is null) return null;
 
-            // El bus no puede estar en dos viajes a la vez
-            var llegada = salida + (Formato.Duracion(ruta.DuracionEstimada) ?? DuracionPorDefecto) + Descanso;
-            var dia = salida.Date;
-            var cercanos = await _db.Viajes.AsNoTracking()
-                .Where(v => v.IdBus == bus.IdBus && v.Estado == "Programado" && v.IdViaje != idExcluir
-                            && v.FechaSalida >= dia.AddDays(-3) && v.FechaSalida <= dia.AddDays(3))
-                .Select(v => new
-                {
-                    v.FechaSalida,
-                    v.HoraSalida,
-                    v.Ruta.DuracionEstimada,
-                    Origen = v.Ruta.Origen.NombreCiudad,
-                    Destino = v.Ruta.Destino.NombreCiudad
-                }).ToListAsync();
+            // Ni el bus ni el chofer pueden estar en dos viajes a la vez
+            var llegada = salida + TiempoViaje.Duracion(ruta.DuracionEstimada) + TiempoViaje.Descanso;
 
-            foreach (var c in cercanos)
+            if (await Disponibilidad.BusOcupadoAsync(_db, bus.IdBus, salida, llegada, idExcluir) is { } choqueBus)
             {
-                var inicioC = c.FechaSalida.Add(c.HoraSalida);
-                var finC = inicioC + (Formato.Duracion(c.DuracionEstimada) ?? DuracionPorDefecto) + Descanso;
-                if (salida < finC && inicioC < llegada)
-                {
-                    ModelState.AddModelError(nameof(m.IdBus),
-                        $"El bus {bus.Placa} ya tiene el viaje {c.Origen} - {c.Destino} el {inicioC:dd/MM} a las {inicioC:HH:mm} " +
-                        $"y queda ocupado hasta el {finC:dd/MM} a las {finC:HH:mm}.");
-                    return null;
-                }
+                ModelState.AddModelError(nameof(m.IdBus),
+                    $"El bus {bus.Placa} ya tiene el viaje {choqueBus.Ruta} el {choqueBus.Inicio:dd/MM} a las {choqueBus.Inicio:HH:mm} " +
+                    $"y queda ocupado hasta el {choqueBus.Fin:dd/MM} a las {choqueBus.Fin:HH:mm}.");
+                return null;
+            }
+
+            if (chofer is not null && await Disponibilidad.ChoferOcupadoAsync(_db, chofer.IdUsuario, salida, llegada, idExcluir) is { } choqueChofer)
+            {
+                ModelState.AddModelError(nameof(m.IdChofer),
+                    $"{chofer.Nombres} {chofer.Apellidos} ya tiene el viaje {choqueChofer.Ruta} el {choqueChofer.Inicio:dd/MM} a las {choqueChofer.Inicio:HH:mm} " +
+                    $"y queda ocupado hasta el {choqueChofer.Fin:dd/MM} a las {choqueChofer.Fin:HH:mm}.");
+                return null;
             }
 
             return precio;
         }
 
-        private async Task CargarListasAsync(ViajeFormVM m, int? busActual)
+        private static string TextoBus(string placa, string marca, string modelo, string servicio, int capacidad) =>
+            $"{placa} · {marca} {modelo} · {servicio} · {capacidad} asientos";
+
+        private static string TextoChofer(Usuario c) => $"{c.Nombres} {c.Apellidos} · {c.NombreUsuario}";
+
+        private async Task CargarListasAsync(ViajeFormVM m, int? busActual, int? choferActual)
         {
             m.Rutas = await OpcionesRutasAsync(incluirTodas: false);
             var buses = await _db.Buses.AsNoTracking()
@@ -343,8 +444,14 @@ namespace WebApplication1.Controllers
                 .Select(b => new { b.IdBus, b.Placa, b.Marca, b.Modelo, b.Servicio, b.CapacidadAsientos })
                 .ToListAsync();
             m.Buses = buses.Select(b => new SelectListItem(
-                $"{b.Placa} · {b.Marca} {b.Modelo} · {b.Servicio} · {b.CapacidadAsientos} asientos",
+                TextoBus(b.Placa, b.Marca, b.Modelo, b.Servicio, b.CapacidadAsientos),
                 b.IdBus.ToString())).ToList();
+
+            var choferes = await _db.Usuarios.AsNoTracking()
+                .Where(u => u.Rol.NombreRol == Roles.Chofer && (u.Estado == "Activo" || u.IdUsuario == choferActual))
+                .OrderBy(u => u.Apellidos).ThenBy(u => u.Nombres)
+                .ToListAsync();
+            m.Choferes = choferes.Select(c => new SelectListItem(TextoChofer(c), c.IdUsuario.ToString())).ToList();
         }
 
         private async Task<List<SelectListItem>> OpcionesRutasAsync(bool incluirTodas)

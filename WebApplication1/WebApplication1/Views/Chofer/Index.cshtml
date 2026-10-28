@@ -1,0 +1,135 @@
+@model ChoferIndexVM
+@{
+    ViewData["Title"] = "Mis viajes";
+
+    string Hora(DateTime? f) => f?.ToString("HH:mm") ?? "--:--";
+    string DiaHora(DateTime f) => f.ToString("dd/MM HH:mm");
+}
+
+<nav class="text-muted small mb-2">INICIO &gt; <span class="text-dark fw-bold">MIS VIAJES</span></nav>
+<h4 class="fw-bold mb-1"><i class="fa-solid fa-route me-2"></i>Mis viajes</h4>
+<p class="text-muted">Hola, @Model.Nombre. Marca la partida cuando salgas y la llegada cuando termines el viaje.</p>
+
+@if (TempData["Mensaje"] != null)
+{
+    <div class="alert alert-success">@TempData["Mensaje"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<h6 class="fw-bold text-teal mb-2">EN RUTA <span class="text-muted fw-normal">(@Model.EnRuta.Count)</span></h6>
+@foreach (var v in Model.EnRuta)
+{
+    <div class="card mb-3 border-info">
+        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <div class="fs-5 fw-bold">@v.Ruta</div>
+                <div class="text-muted small">@v.Placa · @v.Servicio</div>
+                <div class="mt-1">
+                    Salió <strong>@(v.SalidaReal is null ? "a las " + Hora(v.Salida) + " (programada)" : "a las " + Hora(v.SalidaReal))</strong>
+                    · Llegada estimada <strong>@DiaHora(v.LlegadaEstimada)</strong>
+                </div>
+            </div>
+            <div class="d-flex flex-column gap-2">
+                @if (v.PuedeMarcarPartida)
+                {
+                    <form asp-action="Partio" asp-route-id="@v.IdViaje" method="post">
+                        <button type="submit" class="btn btn-outline-success w-100">
+                            <i class="fa-solid fa-play me-1"></i> Registrar hora de partida
+                        </button>
+                    </form>
+                }
+                <form asp-action="Llego" asp-route-id="@v.IdViaje" method="post">
+                    <button type="submit" class="btn btn-lg btn-success w-100">
+                        <i class="fa-solid fa-flag-checkered me-1"></i> Llegué a destino
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+@if (!Model.EnRuta.Any())
+{
+    <p class="text-muted">No tienes viajes en ruta.</p>
+}
+
+<h6 class="fw-bold text-teal mt-4 mb-2">POR SALIR <span class="text-muted fw-normal">(@Model.PorSalir.Count)</span></h6>
+@foreach (var v in Model.PorSalir)
+{
+    <div class="card mb-3">
+        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <div class="fs-5 fw-bold">@v.Ruta</div>
+                <div class="text-muted small">@v.Placa · @v.Servicio · @v.Vendidos/@v.Capacidad asientos vendidos</div>
+                <div class="mt-1">
+                    Sale <strong>@DiaHora(v.Salida)</strong> · Llegada estimada <strong>@DiaHora(v.LlegadaEstimada)</strong>
+                    @if (v.Atrasado)
+                    {
+                        <span class="badge bg-warning-subtle text-warning ms-1">Ya debió salir</span>
+                    }
+                </div>
+            </div>
+            <div>
+                @if (v.PuedeMarcarPartida)
+                {
+                    <form asp-action="Partio" asp-route-id="@v.IdViaje" method="post">
+                        <button type="submit" class="btn btn-lg btn-success">
+                            <i class="fa-solid fa-play me-1"></i> Salí del terminal
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <span class="small text-muted"><i class="fa-regular fa-clock me-1"></i>Podrás marcar la partida desde una hora antes.</span>
+                }
+            </div>
+        </div>
+    </div>
+}
+@if (!Model.PorSalir.Any())
+{
+    <p class="text-muted">No tienes viajes programados para esta semana.</p>
+}
+
+<h6 class="fw-bold text-teal mt-4 mb-2">ÚLTIMOS VIAJES TERMINADOS</h6>
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr><th>Ruta</th><th>Salida</th><th>Llegada</th><th>Resultado</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var v in Model.Recientes)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@v.Ruta</td>
+                            <td class="text-nowrap">@DiaHora(v.Salida)<br /><span class="small text-muted">real @Hora(v.SalidaReal)</span></td>
+                            <td class="text-nowrap">@DiaHora(v.LlegadaEstimada)<br /><span class="small text-muted">real @Hora(v.LlegadaReal)</span></td>
+                            <td>
+                                @if (v.RetrasoLlegada is null)
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary">Sin hora registrada</span>
+                                }
+                                else if (v.RetrasoLlegada > 15)
+                                {
+                                    <span class="badge bg-danger-subtle text-danger">@v.RetrasoLlegada min de retraso</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success-subtle text-success">A tiempo</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Recientes.Any())
+                    {
+                        <tr><td colspan="4" class="text-center text-muted py-3">Todavía no terminaste ningún viaje.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -15,7 +15,7 @@ namespace WebApplication1.Components
         {
             var hoy = DateTime.Today;
             var viajesHoy = await _db.Viajes.AsNoTracking()
-                .CountAsync(v => v.Estado == "Programado" && v.FechaSalida == hoy);
+                .CountAsync(v => (v.Estado == EstadosViaje.Programado || v.Estado == EstadosViaje.EnRuta) && v.FechaSalida == hoy);
             var pendientes = await _db.Reservas.AsNoTracking()
                 .CountAsync(r => r.Estado == "Pendiente");
 

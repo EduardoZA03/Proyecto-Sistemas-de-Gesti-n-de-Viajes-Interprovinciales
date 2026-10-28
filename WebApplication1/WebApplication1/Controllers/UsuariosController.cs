@@ -260,11 +260,11 @@ namespace WebApplication1.Controllers
 
         // ---------- APOYO ----------
 
-        // Los clientes están en espera: solo se asigna Administrador o Vendedor
+        // Los clientes están en espera: solo se asigna Administrador, Vendedor o Chofer
         // (una cuenta que ya es Cliente conserva ese rol en la lista)
         private static List<string> RolesPermitidos(string rolActual)
         {
-            var roles = new List<string> { Roles.Administrador, Roles.Vendedor };
+            var roles = new List<string> { Roles.Administrador, Roles.Vendedor, Roles.Chofer };
             if (!roles.Contains(rolActual)) roles.Add(rolActual);
             return roles;
         }

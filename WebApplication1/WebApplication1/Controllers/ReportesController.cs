@@ -95,6 +95,151 @@ namespace WebApplication1.Controllers
             };
         }
 
+        // ---------- REPORTE DE RETRASOS ----------
+        // Compara la llegada estimada (salida programada + duración de la ruta) con la hora real que registró
+        // el chofer o el administrador. Solo cuentan los viajes finalizados que tienen hora real de llegada.
+
+        [HttpGet]
+        public async Task<IActionResult> Retrasos()
+        {
+            return View(await ConstruirRetrasosAsync(new RetrasosVM()));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Retrasos(RetrasosVM filtros)
+        {
+            return View(await ConstruirRetrasosAsync(filtros));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> RetrasosExcel(RetrasosVM filtros)
+        {
+            var libro = await ConstruirLibroRetrasosAsync(filtros);
+            var archivo = new GeneradorReporteExcel().Generar(libro);
+            return File(archivo.Contenido, archivo.TipoContenido, archivo.NombreArchivo);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> RetrasosPdf(RetrasosVM filtros)
+        {
+            var libro = await ConstruirLibroRetrasosAsync(filtros);
+            var archivo = new GeneradorReportePdf(ExportacionUtil.Logo(_env)).Generar(libro);
+            return File(archivo.Contenido, archivo.TipoContenido, archivo.NombreArchivo);
+        }
+
+        private async Task<LibroReporte> ConstruirLibroRetrasosAsync(RetrasosVM entrada)
+        {
+            var r = await ConstruirRetrasosAsync(entrada);
+
+            var filtros = new List<(string, string)>();
+            if (ExportacionUtil.Periodo(r.FechaInicio, r.FechaFin) is { } periodo) filtros.Add(("Período", periodo));
+            ExportacionUtil.AgregarFiltro(filtros, "Ruta", r.Ruta, "Todas las rutas");
+            ExportacionUtil.AgregarFiltro(filtros, "Chofer", r.Chofer, "Todos los choferes");
+
+            return new LibroReporte
+            {
+                Titulo = "Reporte de retrasos",
+                Subtitulo = $"{r.Evaluados} viaje(s) evaluados",
+                NombreArchivo = "Retrasos",
+                GeneradoPor = ExportacionUtil.NombreUsuario(User),
+                Filtros = filtros,
+                Resumen = new()
+                {
+                    ("Viajes evaluados", r.Evaluados.ToString("N0", FormatoEs.Cultura)),
+                    ("Con retraso", r.ConRetraso.ToString("N0", FormatoEs.Cultura)),
+                    ("Retraso promedio", $"{r.PromedioRetraso:0} min"),
+                    ("Mayor retraso", $"{r.MayorRetraso} min")
+                },
+                Secciones = new()
+                {
+                    new SeccionTabla
+                    {
+                        Titulo = "Viajes finalizados con hora real de llegada",
+                        Columnas = new()
+                        {
+                            new("Ruta", TipoColumna.Texto, 2.2f),
+                            new("Bus", TipoColumna.Texto, 1f),
+                            new("Chofer", TipoColumna.Texto, 1.7f),
+                            new("Salida programada", TipoColumna.FechaHora, 1.4f),
+                            new("Salida real", TipoColumna.FechaHora, 1.4f),
+                            new("Llegada estimada", TipoColumna.FechaHora, 1.4f),
+                            new("Llegada real", TipoColumna.FechaHora, 1.4f),
+                            new("Retraso (min)", TipoColumna.Entero, 1f),
+                            new("Condición", TipoColumna.Texto, 1.1f)
+                        },
+                        Filas = r.Filas.Select(f => new object?[]
+                        {
+                            f.Ruta, f.Placa, f.Chofer, f.SalidaProgramada, f.SalidaReal, f.LlegadaEstimada, f.LlegadaReal, f.RetrasoLlegada, f.Condicion
+                        }).ToList()
+                    }
+                }
+            };
+        }
+
+        private async Task<RetrasosVM> ConstruirRetrasosAsync(RetrasosVM f)
+        {
+            var desde = (f.FechaInicio ?? DateTime.Today.AddDays(-30)).Date;
+            var hasta = (f.FechaFin ?? DateTime.Today).Date;
+            if (desde > hasta)
+            {
+                (desde, hasta) = (hasta, desde);
+                ViewData["Aviso"] = "La fecha de inicio era posterior a la fecha fin: se intercambiaron para el reporte.";
+            }
+            f.FechaInicio = desde;
+            f.FechaFin = hasta;
+            ModelState.Remove(nameof(f.FechaInicio));
+            ModelState.Remove(nameof(f.FechaFin));
+
+            var ruta = Formato.FiltroOpcional(f.Ruta, "Todas las rutas");
+            var chofer = Formato.FiltroOpcional(f.Chofer, "Todos los choferes");
+
+            f.RutasDisponibles = await _db.Rutas.AsNoTracking()
+                .Where(r => r.Estado == "Activo")
+                .Select(r => r.Origen.NombreCiudad + " - " + r.Destino.NombreCiudad)
+                .OrderBy(x => x).ToListAsync();
+            f.ChoferesDisponibles = await _db.Usuarios.AsNoTracking()
+                .Where(u => u.Rol.NombreRol == Roles.Chofer)
+                .Select(u => u.Nombres + " " + u.Apellidos)
+                .OrderBy(x => x).ToListAsync();
+
+            var q = _db.Viajes.AsNoTracking()
+                .Where(v => v.Estado == EstadosViaje.Finalizado && v.FechaSalida >= desde && v.FechaSalida <= hasta);
+            if (ruta != null)
+                q = q.Where(v => (v.Ruta.Origen.NombreCiudad + " - " + v.Ruta.Destino.NombreCiudad) == ruta);
+            if (chofer != null)
+                q = q.Where(v => v.Chofer != null && (v.Chofer.Nombres + " " + v.Chofer.Apellidos) == chofer);
+
+            var filas = await q.ComoFilasControlAsync(DateTime.Now);
+
+            f.SinHoraReal = filas.Count(x => x.LlegadaReal is null);
+            f.Filas = filas.Where(x => x.LlegadaReal is not null).Select(x =>
+            {
+                var retraso = x.RetrasoLlegada!.Value;
+                return new RetrasoFilaVM
+                {
+                    IdViaje = x.IdViaje,
+                    Ruta = x.Ruta,
+                    Placa = x.Placa,
+                    Chofer = string.IsNullOrEmpty(x.Chofer) ? "(sin chofer)" : x.Chofer,
+                    SalidaProgramada = x.Salida,
+                    SalidaReal = x.SalidaReal,
+                    RetrasoSalida = x.RetrasoSalida,
+                    LlegadaEstimada = x.LlegadaEstimada,
+                    LlegadaReal = x.LlegadaReal!.Value,
+                    RetrasoLlegada = retraso,
+                    Condicion = retraso > TiempoViaje.ToleranciaRetraso.TotalMinutes ? "Retrasado"
+                              : retraso < -TiempoViaje.ToleranciaRetraso.TotalMinutes ? "Adelantado" : "A tiempo"
+                };
+            }).OrderByDescending(x => x.RetrasoLlegada).ThenByDescending(x => x.SalidaProgramada).ToList();
+
+            var retrasados = f.Filas.Where(x => x.Condicion == "Retrasado").ToList();
+            f.Evaluados = f.Filas.Count;
+            f.ConRetraso = retrasados.Count;
+            f.PromedioRetraso = retrasados.Count == 0 ? 0 : retrasados.Average(x => x.RetrasoLlegada);
+            f.MayorRetraso = retrasados.Count == 0 ? 0 : retrasados.Max(x => x.RetrasoLlegada);
+            return f;
+        }
+
         public async Task<IActionResult> Index()
         {
             return View(await ConstruirAsync(new ReportesIndexVM()));
