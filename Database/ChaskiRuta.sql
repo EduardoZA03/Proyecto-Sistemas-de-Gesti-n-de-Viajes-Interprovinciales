@@ -788,12 +788,12 @@ BEGIN
                              ELSE 2 + p.Num % 10 END AS Edad) x
     CROSS APPLY (SELECT (h2.S / 4096) % 100 AS R) re
     CROSS APPLY (SELECT CASE WHEN o.Estado = N'Programado'
-                             THEN CASE WHEN re.R < 75 THEN N'Confirmada'
-                                       WHEN re.R < 90 THEN N'Pendiente' ELSE N'Cancelada' END
+                             THEN CASE WHEN re.R < 78 THEN N'Confirmada'
+                                       WHEN re.R < 96 THEN N'Pendiente' ELSE N'Cancelada' END
                              ELSE CASE WHEN re.R < 92 THEN N'Confirmada' ELSE N'Cancelada' END
                         END AS Estado) e
     CROSS APPLY (SELECT CASE WHEN o.Estado = N'Programado'
-                             THEN DATEADD(HOUR, -(1 + (h3.S / 4096) % 40), @ahora)
+                             THEN DATEADD(HOUR, -(1 + (h3.S / 4096) % 140), @ahora)
                              ELSE DATEADD(HOUR, -CASE (h3.S / 4096) % 6 WHEN 0 THEN 6 WHEN 1 THEN 15 WHEN 2 THEN 20
                                                                       WHEN 3 THEN 30 WHEN 4 THEN 48 ELSE 72 END, o.Salida)
                         END AS Fecha) c
