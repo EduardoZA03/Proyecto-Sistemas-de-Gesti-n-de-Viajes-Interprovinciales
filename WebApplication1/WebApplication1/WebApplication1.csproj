@@ -10,6 +10,8 @@
     <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
     <PackageReference Include="QuestPDF" Version="2026.9.1" />
+    <!-- Versión corregida (CVE-2026-70162 y CVE-2026-84008) del paquete que llega de forma indirecta con la 9.0.11 -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
   </ItemGroup>
 
 </Project>
