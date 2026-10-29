@@ -21,6 +21,7 @@ namespace WebApplication1.Controllers
 
         // ---------- LISTADO ----------
 
+        // Lista las ciudades con filtros y marca cuáles se pueden eliminar (las que no tienen rutas, viajes ni terminales)
         [HttpGet]
         public async Task<IActionResult> Index(string? estado, string? departamento, string? texto)
         {
@@ -69,9 +70,11 @@ namespace WebApplication1.Controllers
 
         // ---------- NUEVA ----------
 
+        // Muestra el formulario vacío para registrar una ciudad
         [HttpGet]
         public IActionResult Nueva() => View("Formulario", new CiudadFormVM());
 
+        // Valida y guarda la nueva ciudad
         [HttpPost]
         public async Task<IActionResult> Nueva(CiudadFormVM model)
         {
@@ -93,6 +96,7 @@ namespace WebApplication1.Controllers
 
         // ---------- EDITAR ----------
 
+        // Muestra el formulario con los datos de la ciudad a editar
         [HttpGet]
         public async Task<IActionResult> Editar(int id)
         {
@@ -109,6 +113,7 @@ namespace WebApplication1.Controllers
             });
         }
 
+        // Valida y guarda los cambios de la ciudad; no deja desactivarla si tiene rutas activas y renombra sus terminales
         [HttpPost]
         public async Task<IActionResult> Editar(int id, CiudadFormVM model)
         {
@@ -151,6 +156,7 @@ namespace WebApplication1.Controllers
 
         // ---------- ELIMINAR ----------
 
+        // Elimina la ciudad si no está en uso; si lo está, avisa que solo se puede desactivar
         [HttpPost]
         public async Task<IActionResult> Eliminar(int id)
         {
@@ -179,6 +185,7 @@ namespace WebApplication1.Controllers
         // Quita espacios de más: "  San   Martín " -> "San Martín"
         private static string Limpiar(string nombre) => Regex.Replace(nombre.Trim(), @"\s+", " ");
 
+        // Comprueba el formato del nombre, que no se repita en el mismo departamento y que el departamento y el estado sean válidos
         private async Task ValidarAsync(CiudadFormVM m, int? idExcluir)
         {
             if (!string.IsNullOrWhiteSpace(m.Nombre))

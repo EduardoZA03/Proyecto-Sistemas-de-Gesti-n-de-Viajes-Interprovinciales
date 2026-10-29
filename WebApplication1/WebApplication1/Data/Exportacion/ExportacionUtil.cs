@@ -20,6 +20,7 @@ namespace WebApplication1.Data.Exportacion
             return _logo;
         }
 
+        // Nombre del usuario que generó el reporte (para mostrarlo en el pie del documento)
         public static string NombreUsuario(ClaimsPrincipal usuario) =>
             usuario.FindFirst("NombreCompleto")?.Value ?? usuario.Identity?.Name ?? "—";
 

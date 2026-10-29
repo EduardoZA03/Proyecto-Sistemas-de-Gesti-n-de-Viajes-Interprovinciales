@@ -24,6 +24,7 @@ namespace WebApplication1.Controllers
             _cache = cache;
         }
 
+        // Muestra la pantalla de inicio de sesión (si ya hay sesión, va al inicio)
         [AllowAnonymous, HttpGet]
         public IActionResult Login(string? returnUrl)
         {
@@ -32,6 +33,7 @@ namespace WebApplication1.Controllers
             return View(new LoginVM { ReturnUrl = returnUrl });
         }
 
+        // Verifica el ID y la contraseña, controla el bloqueo por intentos fallidos y abre la sesión si todo es correcto
         [AllowAnonymous, HttpPost]
         public async Task<IActionResult> Login(LoginVM model)
         {
@@ -112,6 +114,7 @@ namespace WebApplication1.Controllers
             return RedirectToAction("Index", "Home");
         }
 
+        // Cierra la sesión del usuario y vuelve a la pantalla de inicio de sesión
         [HttpPost]
         public async Task<IActionResult> Salir()
         {
@@ -119,13 +122,16 @@ namespace WebApplication1.Controllers
             return RedirectToAction(nameof(Login));
         }
 
+        // Muestra la página de acceso denegado cuando el rol no tiene permiso
         [AllowAnonymous, HttpGet]
         public IActionResult AccesoDenegado() => View();
 
         // Crear cuentas: solo el administrador. Se piden todos los datos personales.
+        // Muestra el formulario vacío para crear una cuenta
         [Authorize(Roles = Roles.Administrador), HttpGet]
         public IActionResult Registro() => View(new RegistroVM());
 
+        // Valida los datos (rol, contraseña, correo, ID/DNI/correo únicos) y crea la cuenta con la contraseña cifrada
         [Authorize(Roles = Roles.Administrador), HttpPost]
         public async Task<IActionResult> Registro(RegistroVM model)
         {

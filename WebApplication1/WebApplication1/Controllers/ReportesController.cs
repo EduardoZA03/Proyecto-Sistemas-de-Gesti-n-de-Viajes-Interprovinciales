@@ -21,6 +21,7 @@ namespace WebApplication1.Controllers
 
         // ---------- EXPORTAR (respetan los filtros que se están viendo) ----------
 
+        // Descarga el reporte de gestión (ingresos, pasajeros y ocupación) en Excel con los filtros aplicados
         [HttpGet]
         public async Task<IActionResult> ExportarExcel(ReportesIndexVM filtros)
         {
@@ -29,6 +30,7 @@ namespace WebApplication1.Controllers
             return File(archivo.Contenido, archivo.TipoContenido, archivo.NombreArchivo);
         }
 
+        // Descarga el reporte de gestión (ingresos, pasajeros y ocupación) en PDF con los filtros aplicados
         [HttpGet]
         public async Task<IActionResult> ExportarPdf(ReportesIndexVM filtros)
         {
@@ -37,6 +39,7 @@ namespace WebApplication1.Controllers
             return File(archivo.Contenido, archivo.TipoContenido, archivo.NombreArchivo);
         }
 
+        // Arma el modelo del reporte de gestión (resumen y tres tablas: por día, por ruta y por servicio) para exportar
         private async Task<LibroReporte> ConstruirLibroAsync(ReportesIndexVM entrada)
         {
             var r = await ConstruirAsync(entrada);
@@ -99,18 +102,21 @@ namespace WebApplication1.Controllers
         // Compara la llegada estimada (salida programada + duración de la ruta) con la hora real que registró
         // el chofer o el administrador. Solo cuentan los viajes finalizados que tienen hora real de llegada.
 
+        // Muestra el reporte de retrasos con el rango de fechas por defecto
         [HttpGet]
         public async Task<IActionResult> Retrasos()
         {
             return View(await ConstruirRetrasosAsync(new RetrasosVM()));
         }
 
+        // Muestra el reporte de retrasos aplicando los filtros (fechas, ruta y chofer)
         [HttpPost]
         public async Task<IActionResult> Retrasos(RetrasosVM filtros)
         {
             return View(await ConstruirRetrasosAsync(filtros));
         }
 
+        // Descarga el reporte de retrasos en Excel con los filtros aplicados
         [HttpGet]
         public async Task<IActionResult> RetrasosExcel(RetrasosVM filtros)
         {
@@ -119,6 +125,7 @@ namespace WebApplication1.Controllers
             return File(archivo.Contenido, archivo.TipoContenido, archivo.NombreArchivo);
         }
 
+        // Descarga el reporte de retrasos en PDF con los filtros aplicados
         [HttpGet]
         public async Task<IActionResult> RetrasosPdf(RetrasosVM filtros)
         {
@@ -127,6 +134,7 @@ namespace WebApplication1.Controllers
             return File(archivo.Contenido, archivo.TipoContenido, archivo.NombreArchivo);
         }
 
+        // Arma el modelo del reporte de retrasos (resumen y tabla de viajes finalizados) para exportar
         private async Task<LibroReporte> ConstruirLibroRetrasosAsync(RetrasosVM entrada)
         {
             var r = await ConstruirRetrasosAsync(entrada);
@@ -176,6 +184,7 @@ namespace WebApplication1.Controllers
             };
         }
 
+        // Compara la llegada estimada con la real de los viajes finalizados y calcula los retrasos, el promedio y el mayor
         private async Task<RetrasosVM> ConstruirRetrasosAsync(RetrasosVM f)
         {
             var desde = (f.FechaInicio ?? DateTime.Today.AddDays(-30)).Date;
@@ -240,17 +249,20 @@ namespace WebApplication1.Controllers
             return f;
         }
 
+        // Muestra el reporte de gestión con el rango de fechas por defecto
         public async Task<IActionResult> Index()
         {
             return View(await ConstruirAsync(new ReportesIndexVM()));
         }
 
+        // Muestra el reporte de gestión aplicando los filtros (fechas, ruta y servicio)
         [HttpPost]
         public async Task<IActionResult> Index(ReportesIndexVM filtros)
         {
             return View(await ConstruirAsync(filtros));
         }
 
+        // Calcula los indicadores del período (ingresos, pasajeros, viajes y ocupación) y los datos de los gráficos por día, ruta y servicio
         private async Task<ReportesIndexVM> ConstruirAsync(ReportesIndexVM f)
         {
             var desde = (f.FechaInicio ?? DateTime.Today.AddDays(-14)).Date;

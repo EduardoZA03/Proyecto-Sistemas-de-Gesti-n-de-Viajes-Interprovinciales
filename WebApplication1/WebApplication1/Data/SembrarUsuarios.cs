@@ -25,6 +25,7 @@ namespace WebApplication1.Data
             ["chofer10"] = "chofer123"
         };
 
+        // Recorre las cuentas de ejemplo sin contraseña y les asigna la inicial ya cifrada
         public static async Task EjecutarAsync(IServiceProvider servicios)
         {
             using var scope = servicios.CreateScope();

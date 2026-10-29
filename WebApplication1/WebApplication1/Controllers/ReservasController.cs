@@ -25,6 +25,7 @@ namespace WebApplication1.Controllers
 
         public ReservasController(ChaskiRutaContext db) => _db = db;
 
+        // Lista las últimas 100 reservas con filtros y marca si cada una se puede cobrar o cancelar (con su devolución estimada)
         [HttpGet]
         public async Task<IActionResult> Index(string? estado, string? texto)
         {
@@ -187,6 +188,7 @@ namespace WebApplication1.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        // Muestra el formulario de nueva reserva (paso 1: buscar viaje)
         [HttpGet]
         public async Task<IActionResult> Nueva()
         {
@@ -195,6 +197,7 @@ namespace WebApplication1.Controllers
             return View(model);
         }
 
+        // Busca los viajes que cumplen origen, destino, fecha y cantidad de pasajeros, y avisa si no hay resultados
         [HttpPost]
         public async Task<IActionResult> BuscarViajes(NuevaReservaVM model)
         {
@@ -212,6 +215,7 @@ namespace WebApplication1.Controllers
             return View("Nueva", model);
         }
 
+        // Al elegir un viaje, carga su mapa de asientos y su resumen (paso 2: elegir asiento y pasajero)
         [HttpPost]
         public async Task<IActionResult> SeleccionarViaje(NuevaReservaVM model)
         {
@@ -226,6 +230,7 @@ namespace WebApplication1.Controllers
             return View("Nueva", model);
         }
 
+        // Valida los datos del pasajero, elige la tarifa por edad y guarda la reserva dentro de una transacción Serializable que evita la sobreventa del asiento
         [HttpPost]
         public async Task<IActionResult> GuardarReserva(NuevaReservaVM model)
         {
@@ -429,6 +434,7 @@ namespace WebApplication1.Controllers
             (await ProyectarViajesAsync(_db.Viajes.AsNoTracking().Where(v => v.IdViaje == idViaje), mostrarFecha: true))
             .FirstOrDefault();
 
+        // Convierte los viajes de la consulta en filas para mostrar (ruta, horarios, precio desde y asientos disponibles)
         private async Task<List<ViajeDisponibleVM>> ProyectarViajesAsync(IQueryable<Viaje> q, bool mostrarFecha)
         {
             var filas = await q.Select(v => new
@@ -508,6 +514,7 @@ namespace WebApplication1.Controllers
                 .ToList();
         }
 
+        // Arma el mapa de asientos del bus del viaje, marcando cada uno como Ocupado o Disponible
         private async Task<List<AsientoVM>> AsientosAsync(int idViaje)
         {
             var idBus = await _db.Viajes.AsNoTracking()

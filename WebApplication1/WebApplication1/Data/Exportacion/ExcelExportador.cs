@@ -7,6 +7,7 @@ namespace WebApplication1.Data.Exportacion
         private const string Teal = "#17A6A0";
         private const string Gris = "#F4F8F8";
 
+        // Genera el archivo Excel del reporte: una hoja de resumen y una hoja de datos por cada sección
         public static byte[] Generar(LibroReporte libro)
         {
             using var libroXl = new XLWorkbook();
@@ -25,6 +26,7 @@ namespace WebApplication1.Data.Exportacion
             return ms.ToArray();
         }
 
+        // Arma la hoja "Resumen" con el título, los filtros aplicados y los indicadores principales
         private static void HojaResumen(XLWorkbook libroXl, LibroReporte libro)
         {
             var ws = libroXl.AddWorksheet("Resumen");
@@ -76,6 +78,7 @@ namespace WebApplication1.Data.Exportacion
             ws.Cell(fila, 2).SetValue(FormatoEs.FechaHora(libro.Generado));
         }
 
+        // Arma una hoja con la tabla de una sección (encabezados, filas y totales)
         private static void HojaDatos(XLWorkbook libroXl, SeccionTabla seccion, string nombre)
         {
             var ws = libroXl.AddWorksheet(nombre);
@@ -162,6 +165,7 @@ namespace WebApplication1.Data.Exportacion
             }
         }
 
+        // Devuelve el formato de celda de Excel según el tipo de columna (moneda, fecha, porcentaje, etc.)
         private static string FormatoNumero(TipoColumna tipo) => tipo switch
         {
             TipoColumna.Moneda or TipoColumna.BarraMoneda => "\"S/\" #,##0.00",

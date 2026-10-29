@@ -34,6 +34,7 @@ namespace WebApplication1.Data
         // Hash de relleno para que verificar un ID inexistente tarde lo mismo que uno real
         public static readonly string HashFalso = Hasher.HashPassword(new Usuario(), Guid.NewGuid().ToString("N"));
 
+        // Crea la identidad de la sesión (id, usuario, nombre, rol y sello) que viaja en la cookie
         public static ClaimsPrincipal CrearPrincipal(Usuario u)
         {
             var identidad = new ClaimsIdentity(new[]
@@ -69,17 +70,20 @@ namespace WebApplication1.Data
 
         private record EstadoSesion(string Estado, string Rol, string Sello);
 
+        // Huella corta de la contraseña actual; si la contraseña cambia, cambia el sello y la sesión vieja deja de valer
         public static string Sello(string? contrasenaHash) =>
             string.IsNullOrEmpty(contrasenaHash)
                 ? string.Empty
                 : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(contrasenaHash)))[..16];
 
+        // Clave con la que se guarda en caché el estado de la sesión de un usuario
         public static string ClaveSesion(int idUsuario) => $"sesion:{idUsuario}";
 
         // Llamar tras cualquier cambio que deba notarse ya (estado, rol, contraseña)
         public static void InvalidarSesion(this IMemoryCache cache, int idUsuario) =>
             cache.Remove(ClaveSesion(idUsuario));
 
+        // En cada petición compara la cookie con la base (con 30 s de caché) y cierra la sesión si cambió el estado, el rol o la contraseña
         public static async Task ValidarSesionAsync(CookieValidatePrincipalContext contexto)
         {
             var principal = contexto.Principal;
@@ -108,6 +112,7 @@ namespace WebApplication1.Data
                 await RechazarAsync(contexto);
         }
 
+        // Rechaza la cookie y cierra la sesión del usuario
         private static async Task RechazarAsync(CookieValidatePrincipalContext contexto)
         {
             contexto.RejectPrincipal();

@@ -21,6 +21,7 @@ namespace WebApplication1.Controllers
             _env = env;
         }
 
+        // Muestra la lista de cancelaciones de los últimos 14 días al abrir la pantalla
         public async Task<IActionResult> Index()
         {
             var filtros = new CancelacionesIndexVM
@@ -31,12 +32,14 @@ namespace WebApplication1.Controllers
             return View(await ConstruirAsync(filtros));
         }
 
+        // Muestra la lista de cancelaciones aplicando los filtros que eligió el usuario
         [HttpPost]
         public async Task<IActionResult> Index(CancelacionesIndexVM filtros)
         {
             return View(await ConstruirAsync(filtros));
         }
 
+        // Devuelve el detalle de una cancelación para mostrarlo en la ventana modal
         [HttpGet]
         public async Task<IActionResult> Detalle(string codigo)
         {
@@ -49,6 +52,7 @@ namespace WebApplication1.Controllers
 
         // ---------- EXPORTAR (respetan los filtros que se están viendo) ----------
 
+        // Descarga el reporte de cancelaciones en Excel con los filtros aplicados
         [HttpGet]
         public async Task<IActionResult> ExportarExcel(CancelacionesIndexVM filtros)
         {
@@ -57,6 +61,7 @@ namespace WebApplication1.Controllers
             return File(archivo.Contenido, archivo.TipoContenido, archivo.NombreArchivo);
         }
 
+        // Descarga el reporte de cancelaciones en PDF con los filtros aplicados
         [HttpGet]
         public async Task<IActionResult> ExportarPdf(CancelacionesIndexVM filtros)
         {
@@ -65,6 +70,7 @@ namespace WebApplication1.Controllers
             return File(archivo.Contenido, archivo.TipoContenido, archivo.NombreArchivo);
         }
 
+        // Arma el modelo del reporte (título, filtros, resumen y tabla) que luego se exporta a Excel o PDF
         private async Task<LibroReporte> ConstruirLibroAsync(CancelacionesIndexVM entrada)
         {
             var f = await ConstruirAsync(entrada);
@@ -126,6 +132,7 @@ namespace WebApplication1.Controllers
 
         // ---------- CONSTANCIA ----------
 
+        // Genera la constancia de una cancelación en PDF (con el monto devuelto y la penalidad)
         [HttpGet]
         public async Task<IActionResult> Comprobante(string codigo)
         {
@@ -175,6 +182,7 @@ namespace WebApplication1.Controllers
             return File(archivo.Contenido, archivo.TipoContenido);
         }
 
+        // Aplica los filtros, calcula los totales (devuelto, penalidades, cancelaciones de hoy) y arma la lista de la pantalla
         private async Task<CancelacionesIndexVM> ConstruirAsync(CancelacionesIndexVM f)
         {
             var q = _db.Cancelaciones.AsNoTracking().AsQueryable();
@@ -233,6 +241,7 @@ namespace WebApplication1.Controllers
             return f;
         }
 
+        // Convierte las cancelaciones de la consulta en filas listas para mostrar (pasajero, ruta, devolución, penalidad, etc.)
         private static async Task<List<CancelacionVM>> ProyectarAsync(IQueryable<Cancelacion> q)
         {
             var filas = await q.Select(c => new

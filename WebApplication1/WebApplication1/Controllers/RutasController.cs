@@ -19,6 +19,7 @@ namespace WebApplication1.Controllers
 
         // ---------- LISTADO ----------
 
+        // Lista las rutas con filtros, cuenta sus viajes y marca cuáles tienen ruta de vuelta
         [HttpGet]
         public async Task<IActionResult> Index(string? estado, int? idOrigen, int? idDestino)
         {
@@ -69,6 +70,7 @@ namespace WebApplication1.Controllers
 
         // ---------- NUEVA ----------
 
+        // Muestra el formulario vacío para registrar una ruta
         [HttpGet]
         public async Task<IActionResult> Nueva()
         {
@@ -77,6 +79,7 @@ namespace WebApplication1.Controllers
             return View("Formulario", model);
         }
 
+        // Valida y guarda la nueva ruta (distancia y duración)
         [HttpPost]
         public async Task<IActionResult> Nueva(RutaFormVM model)
         {
@@ -103,6 +106,7 @@ namespace WebApplication1.Controllers
 
         // ---------- EDITAR ----------
 
+        // Muestra el formulario con los datos de la ruta a editar
         [HttpGet]
         public async Task<IActionResult> Editar(int id)
         {
@@ -125,6 +129,7 @@ namespace WebApplication1.Controllers
             return View("Formulario", model);
         }
 
+        // Valida y guarda los cambios de la ruta; con viajes no deja cambiar origen/destino ni desactivarla si hay viajes por salir
         [HttpPost]
         public async Task<IActionResult> Editar(int id, RutaFormVM model)
         {
@@ -169,6 +174,7 @@ namespace WebApplication1.Controllers
 
         // ---------- RUTA DE VUELTA ----------
 
+        // Crea la ruta inversa (destino a origen) con la misma distancia y duración
         [HttpPost]
         public async Task<IActionResult> CrearVuelta(int id)
         {
@@ -197,6 +203,7 @@ namespace WebApplication1.Controllers
 
         // ---------- ELIMINAR ----------
 
+        // Elimina la ruta si no tiene viajes; si los tiene, avisa que solo se puede desactivar
         [HttpPost]
         public async Task<IActionResult> Eliminar(int id)
         {
@@ -216,6 +223,7 @@ namespace WebApplication1.Controllers
 
         // ---------- APOYO ----------
 
+        // Cuenta los viajes programados de la ruta que todavía no han salido
         private async Task<int> ViajesProximosAsync(int idRuta)
         {
             var hoy = DateTime.Today;
@@ -275,6 +283,7 @@ namespace WebApplication1.Controllers
             return (km.Value, DuracionRuta.Texto(m.Horas!.Value, m.Minutos!.Value));
         }
 
+        // Arma la lista desplegable de ciudades activas (más las que la ruta ya usaba, aunque estén inactivas)
         private async Task<List<SelectListItem>> OpcionesCiudadesAsync(bool todas, int[]? conservar)
         {
             var ciudades = await _db.Ciudades.AsNoTracking()

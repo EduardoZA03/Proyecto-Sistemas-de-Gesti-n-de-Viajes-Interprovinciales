@@ -78,6 +78,7 @@ namespace WebApplication1.Data
             return new(true, $"Partida registrada a las {ahora:HH:mm}. El viaje está en ruta.");
         }
 
+        // Cierra el viaje como Finalizado y guarda la hora real de llegada (solo si va En ruta)
         public async Task<Resultado> MarcarLlegadaAsync(int idViaje, int? soloDelChofer = null)
         {
             var v = await _db.Viajes.FirstOrDefaultAsync(x => x.IdViaje == idViaje);
@@ -102,12 +103,15 @@ namespace WebApplication1.Data
     {
         public record Choque(string Ruta, DateTime Inicio, DateTime Fin);
 
+        // ¿El bus ya tiene otro viaje que se cruza con este horario? Devuelve el choque o null
         public static Task<Choque?> BusOcupadoAsync(ChaskiRutaContext db, int idBus, DateTime salida, DateTime finConDescanso, int? idExcluir) =>
             BuscarAsync(db, v => v.IdBus == idBus, salida, finConDescanso, idExcluir);
 
+        // ¿El chofer ya tiene otro viaje que se cruza con este horario? Devuelve el choque o null
         public static Task<Choque?> ChoferOcupadoAsync(ChaskiRutaContext db, int idChofer, DateTime salida, DateTime finConDescanso, int? idExcluir) =>
             BuscarAsync(db, v => v.IdChofer == idChofer, salida, finConDescanso, idExcluir);
 
+        // Revisa los viajes cercanos del bus o chofer y devuelve el primero cuyo horario (más descanso) se solapa
         private static async Task<Choque?> BuscarAsync(ChaskiRutaContext db, Expression<Func<Viaje, bool>> quien,
             DateTime salida, DateTime finConDescanso, int? idExcluir)
         {

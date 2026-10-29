@@ -14,6 +14,7 @@ namespace WebApplication1.Data.Exportacion
 
         // ---------- REPORTE (tablas) ----------
 
+        // Genera el PDF completo del reporte (A4 horizontal) con su cabecera, tablas y pie
         public static byte[] GenerarReporte(LibroReporte libro, byte[]? logo)
         {
             return Document.Create(documento =>
@@ -31,6 +32,7 @@ namespace WebApplication1.Data.Exportacion
             }).GeneratePdf();
         }
 
+        // Dibuja la cabecera del reporte: logo, título, subtítulo y filtros aplicados
         private static void Cabecera(IContainer contenedor, LibroReporte libro, byte[]? logo)
         {
             contenedor.Column(col =>
@@ -57,6 +59,7 @@ namespace WebApplication1.Data.Exportacion
             });
         }
 
+        // Dibuja el cuerpo del reporte: el resumen de indicadores y cada sección con su tabla
         private static void Contenido(IContainer contenedor, LibroReporte libro)
         {
             contenedor.Column(col =>
@@ -98,6 +101,7 @@ namespace WebApplication1.Data.Exportacion
             });
         }
 
+        // Dibuja una tabla de datos con sus encabezados, filas (en zebra) y fila de totales
         private static void Tabla(IContainer contenedor, SeccionTabla seccion)
         {
             contenedor.Column(col =>
@@ -152,6 +156,7 @@ namespace WebApplication1.Data.Exportacion
             });
         }
 
+        // Dibuja una celda dando formato al valor según el tipo de columna (texto, moneda, fecha, barra, etc.)
         private static void Celda(IContainer celda, object? valor, ColumnaTabla columna, decimal maximo, bool negrita)
         {
             var texto = FormatoEs.Texto(valor, columna.Tipo);
@@ -176,6 +181,7 @@ namespace WebApplication1.Data.Exportacion
             if (negrita) t.Bold();
         }
 
+        // Convierte un valor numérico de la celda a decimal (para calcular el largo de las barras)
         private static decimal Convertir(object? v) => v switch
         {
             decimal d => d,
@@ -185,6 +191,7 @@ namespace WebApplication1.Data.Exportacion
             _ => 0m
         };
 
+        // Dibuja el pie del reporte: quién lo generó, la fecha y el número de página
         private static void Pie(IContainer contenedor, LibroReporte libro)
         {
             contenedor.Column(col =>

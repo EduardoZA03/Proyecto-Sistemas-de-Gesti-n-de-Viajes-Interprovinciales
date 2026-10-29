@@ -21,6 +21,7 @@ namespace WebApplication1.Controllers
             _env = env;
         }
 
+        // Muestra la lista de ventas de los últimos 14 días al abrir la pantalla
         public async Task<IActionResult> Index()
         {
             var filtros = new VentasIndexVM
@@ -31,12 +32,14 @@ namespace WebApplication1.Controllers
             return View(await ConstruirAsync(filtros));
         }
 
+        // Muestra la lista de ventas aplicando los filtros que eligió el usuario
         [HttpPost]
         public async Task<IActionResult> Index(VentasIndexVM filtros)
         {
             return View(await ConstruirAsync(filtros));
         }
 
+        // Devuelve el detalle de una venta para mostrarlo en la ventana modal
         [HttpGet]
         public async Task<IActionResult> Detalle(string codigo)
         {
@@ -49,6 +52,7 @@ namespace WebApplication1.Controllers
 
         // ---------- EXPORTAR (respetan los filtros que se están viendo) ----------
 
+        // Descarga el reporte de ventas en Excel con los filtros aplicados
         [HttpGet]
         public async Task<IActionResult> ExportarExcel(VentasIndexVM filtros)
         {
@@ -57,6 +61,7 @@ namespace WebApplication1.Controllers
             return File(archivo.Contenido, archivo.TipoContenido, archivo.NombreArchivo);
         }
 
+        // Descarga el reporte de ventas en PDF con los filtros aplicados
         [HttpGet]
         public async Task<IActionResult> ExportarPdf(VentasIndexVM filtros)
         {
@@ -65,6 +70,7 @@ namespace WebApplication1.Controllers
             return File(archivo.Contenido, archivo.TipoContenido, archivo.NombreArchivo);
         }
 
+        // Arma el modelo del reporte (título, filtros, resumen y tabla) que luego se exporta a Excel o PDF
         private async Task<LibroReporte> ConstruirLibroAsync(VentasIndexVM entrada)
         {
             var f = await ConstruirAsync(entrada);
@@ -123,6 +129,7 @@ namespace WebApplication1.Controllers
 
         // ---------- COMPROBANTE ----------
 
+        // Genera el comprobante de una venta en PDF para verlo o imprimirlo
         [HttpGet]
         public async Task<IActionResult> Comprobante(string codigo)
         {
@@ -180,6 +187,7 @@ namespace WebApplication1.Controllers
         private IQueryable<Pago> PagosValidos() =>
             _db.Pagos.AsNoTracking().Where(p => p.Reserva.Estado != "Cancelada");
 
+        // Aplica los filtros, calcula los totales (ventas, transacciones, promedio y ventas de hoy) y arma la lista de la pantalla
         private async Task<VentasIndexVM> ConstruirAsync(VentasIndexVM f)
         {
             var q = PagosValidos();
@@ -234,6 +242,7 @@ namespace WebApplication1.Controllers
             return f;
         }
 
+        // Convierte los pagos de la consulta en filas listas para mostrar (pasajero, ruta, asientos, monto, etc.)
         private static async Task<List<VentaVM>> ProyectarAsync(IQueryable<Pago> q)
         {
             var filas = await q.Select(p => new

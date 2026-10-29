@@ -22,6 +22,7 @@ namespace WebApplication1.Controllers
 
         // ---------- LISTADO ----------
 
+        // Lista los buses con filtros y el resumen de la flota (operativos, en mantenimiento y de baja)
         [HttpGet]
         public async Task<IActionResult> Index(string? estado, string? servicio, string? texto)
         {
@@ -72,6 +73,7 @@ namespace WebApplication1.Controllers
 
         // ---------- NUEVO ----------
 
+        // Muestra el formulario vacío para registrar un bus
         [HttpGet]
         public async Task<IActionResult> Nuevo()
         {
@@ -80,6 +82,7 @@ namespace WebApplication1.Controllers
             return View("Formulario", model);
         }
 
+        // Valida y guarda el bus, generando sus asientos según la capacidad y los pisos
         [HttpPost]
         public async Task<IActionResult> Nuevo(BusFormVM model)
         {
@@ -111,6 +114,7 @@ namespace WebApplication1.Controllers
 
         // ---------- EDITAR ----------
 
+        // Muestra el formulario con los datos del bus a editar
         [HttpGet]
         public async Task<IActionResult> Editar(int id)
         {
@@ -137,6 +141,7 @@ namespace WebApplication1.Controllers
             return View("Formulario", model);
         }
 
+        // Valida y guarda los cambios del bus; con viajes no deja cambiar asientos ni sacarlo de servicio si hay viajes por salir
         [HttpPost]
         public async Task<IActionResult> Editar(int id, BusFormVM model)
         {
@@ -195,6 +200,7 @@ namespace WebApplication1.Controllers
 
         // ---------- ELIMINAR ----------
 
+        // Elimina el bus si no tiene viajes; si los tiene, avisa que solo se puede dar de baja
         [HttpPost]
         public async Task<IActionResult> Eliminar(int id)
         {
@@ -214,8 +220,10 @@ namespace WebApplication1.Controllers
 
         // ---------- APOYO ----------
 
+        // Deja la placa sin espacios y en mayúsculas
         private static string Normalizar(string placa) => placa.Trim().ToUpperInvariant();
 
+        // Cuenta los viajes programados del bus que todavía no han salido
         private async Task<int> ViajesProximosAsync(int idBus)
         {
             var hoy = DateTime.Today;
@@ -224,6 +232,7 @@ namespace WebApplication1.Controllers
                 && (v.FechaSalida > hoy || (v.FechaSalida == hoy && v.HoraSalida > horaAhora)));
         }
 
+        // Comprueba placa, año, servicio, capacidad, pisos, estado y empresa antes de guardar
         private async Task ValidarAsync(BusFormVM m, int? idExcluir)
         {
             if (!string.IsNullOrWhiteSpace(m.Placa))
@@ -262,6 +271,7 @@ namespace WebApplication1.Controllers
                 ModelState.AddModelError(nameof(m.IdEmpresa), "La empresa elegida no existe.");
         }
 
+        // Carga la lista desplegable de empresas activas (y la elige sola si hay una única)
         private async Task CargarEmpresasAsync(BusFormVM m)
         {
             m.Empresas = (await _db.Empresas.AsNoTracking().Where(e => e.Estado == "Activo")

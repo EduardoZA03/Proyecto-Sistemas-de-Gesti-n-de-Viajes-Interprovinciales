@@ -14,6 +14,7 @@ namespace WebApplication1.Controllers
 
         public HomeController(ChaskiRutaContext db) => _db = db;
 
+        // Arma el tablero de inicio: ventas y reservas de hoy, ocupación, ventas de la semana, próximos viajes y pendientes de cobro
         public async Task<IActionResult> Index()
         {
             // El chofer no tiene panel de ventas: va directo a sus viajes
@@ -157,11 +158,13 @@ namespace WebApplication1.Controllers
             return View(model);
         }
 
+        // Muestra la página de privacidad
         public IActionResult Privacy()
         {
             return View();
         }
 
+        // Muestra la página de error con el identificador de la petición
         [AllowAnonymous]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()

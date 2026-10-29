@@ -24,6 +24,7 @@ namespace WebApplication1.Data
             Intervalo = ConfiguracionViajes.Instancia.IntervaloActualizacion;
         }
 
+        // Bucle del servicio: mientras la aplicación esté encendida, revisa y actualiza los estados cada cierto intervalo
         protected override async Task ExecuteAsync(CancellationToken parada)
         {
             try { await Task.Delay(TimeSpan.FromSeconds(5), parada); }

@@ -22,6 +22,7 @@ namespace WebApplication1.Controllers
             _cache = cache;
         }
 
+        // Muestra la pantalla de configuración con los datos del perfil del usuario que inició sesión
         public async Task<IActionResult> Index()
         {
             var usuario = await _db.ObtenerUsuarioActualAsync(User);
@@ -50,6 +51,7 @@ namespace WebApplication1.Controllers
             return View(model);
         }
 
+        // Valida y guarda los datos del perfil (nombres, correo, DNI, teléfono) y renueva la sesión para reflejar el cambio
         [HttpPost]
         public async Task<IActionResult> GuardarPerfil(ConfiguracionVM model)
         {
@@ -107,6 +109,7 @@ namespace WebApplication1.Controllers
             return RedirectToAction("Index");
         }
 
+        // Cambia la contraseña: comprueba la actual, valida la nueva y cierra las demás sesiones abiertas
         [HttpPost]
         public async Task<IActionResult> CambiarContrasena(ConfiguracionVM model)
         {

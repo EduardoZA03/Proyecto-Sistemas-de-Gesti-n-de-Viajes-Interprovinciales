@@ -20,8 +20,10 @@ namespace WebApplication1.Controllers
             _control = control;
         }
 
+        // El id del chofer que tiene la sesión abierta
         private int IdChofer => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
 
+        // Muestra el panel del chofer: sus viajes en ruta, por salir y los últimos finalizados
         [HttpGet]
         public async Task<IActionResult> Index()
         {
@@ -44,6 +46,7 @@ namespace WebApplication1.Controllers
             return View(model);
         }
 
+        // Registra la hora real de salida del viaje (solo si es un viaje del propio chofer)
         [HttpPost]
         public async Task<IActionResult> Partio(int id)
         {
@@ -52,6 +55,7 @@ namespace WebApplication1.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        // Registra la hora real de llegada del viaje (solo si es un viaje del propio chofer)
         [HttpPost]
         public async Task<IActionResult> Llego(int id)
         {

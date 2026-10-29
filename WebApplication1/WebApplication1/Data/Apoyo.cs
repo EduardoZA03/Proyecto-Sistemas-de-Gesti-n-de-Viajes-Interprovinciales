@@ -90,6 +90,7 @@ namespace WebApplication1.Data
             ("General", 1.00m), ("Estudiante", 0.80m), ("Tercera Edad", 0.70m), ("Niño", 0.50m)
         };
 
+        // Calcula el precio de una tarifa aplicando su porcentaje al precio base
         public static decimal Precio(decimal precioBase, decimal factor) => Math.Round(precioBase * factor, 2);
     }
 
@@ -120,7 +121,9 @@ namespace WebApplication1.Data
             && System.Net.Mail.MailAddress.TryCreate(correo, out var m)
             && m.Address == correo;
 
+        // Arma el código visible de una venta a partir del id del pago (156 -> "VTA-000156")
         public static string CodigoVenta(int idPago) => $"VTA-{idPago:D6}";
+        // Arma el código visible de una cancelación a partir de su id (42 -> "CAN-00042")
         public static string CodigoCancelacion(int idCancelacion) => $"CAN-{idCancelacion:D5}";
 
         // "VTA-000156" -> 156 ; devuelve null si el texto no tiene número
@@ -131,6 +134,7 @@ namespace WebApplication1.Data
             return int.TryParse(partes[^1], out var id) ? id : null;
         }
 
+        // Muestra la hora en formato de 12 horas con AM/PM (14:30 -> "02:30 PM")
         public static string Hora12(DateTime fecha) =>
             fecha.ToString("hh:mm tt", CultureInfo.InvariantCulture);
 

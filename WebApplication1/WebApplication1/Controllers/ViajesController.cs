@@ -24,6 +24,7 @@ namespace WebApplication1.Controllers
 
         // ---------- LISTADO ----------
 
+        // Lista los viajes con filtros (estado, fechas, ruta) y marca cuáles se pueden editar, cancelar o finalizar
         [HttpGet]
         public async Task<IActionResult> Index(string? estado, DateTime? desde, DateTime? hasta, int? idRuta)
         {
@@ -106,6 +107,7 @@ namespace WebApplication1.Controllers
         // ---------- CONTROL DEL DÍA ----------
         // Qué viajes están por salir, cuáles van en ruta y cuáles ya llegaron en la fecha elegida.
 
+        // Arma el tablero del día con tres columnas: viajes por salir, en ruta y los que ya llegaron
         [HttpGet]
         public async Task<IActionResult> Control(DateTime? fecha)
         {
@@ -135,6 +137,7 @@ namespace WebApplication1.Controllers
             return View(model);
         }
 
+        // Registra la hora real de salida del viaje desde el control del día
         [HttpPost]
         public async Task<IActionResult> Partio(int id, string? volver)
         {
@@ -143,6 +146,7 @@ namespace WebApplication1.Controllers
             return RedirectToAction(nameof(Control), new { fecha = volver });
         }
 
+        // Registra la hora real de llegada del viaje desde el control del día
         [HttpPost]
         public async Task<IActionResult> Llego(int id, string? volver)
         {
@@ -154,6 +158,7 @@ namespace WebApplication1.Controllers
         // ---------- DISPONIBLES (lo usa el formulario) ----------
         // Buses operativos y choferes activos que no tienen otro viaje en el horario elegido.
 
+        // Devuelve en JSON los buses y choferes libres en el horario elegido (lo consume el formulario con fetch)
         [HttpGet]
         public async Task<IActionResult> Disponibles(DateTime? fecha, string? hora, int? idRuta, int? idViaje)
         {
@@ -189,6 +194,7 @@ namespace WebApplication1.Controllers
 
         // ---------- NUEVO ----------
 
+        // Muestra el formulario vacío para programar un viaje
         [HttpGet]
         public async Task<IActionResult> Nuevo()
         {
@@ -201,6 +207,7 @@ namespace WebApplication1.Controllers
             return View("Formulario", model);
         }
 
+        // Valida y guarda el viaje, generando sus 4 tarifas a partir del precio base
         [HttpPost]
         public async Task<IActionResult> Nuevo(ViajeFormVM model)
         {
@@ -236,6 +243,7 @@ namespace WebApplication1.Controllers
 
         // ---------- EDITAR ----------
 
+        // Muestra el formulario con los datos del viaje a editar (si todavía se puede modificar)
         [HttpGet]
         public async Task<IActionResult> Editar(int id)
         {
@@ -261,6 +269,7 @@ namespace WebApplication1.Controllers
             return View("Formulario", model);
         }
 
+        // Valida y guarda los cambios del viaje y recalcula sus tarifas según el nuevo precio base
         [HttpPost]
         public async Task<IActionResult> Editar(int id, ViajeFormVM model)
         {
@@ -307,6 +316,7 @@ namespace WebApplication1.Controllers
 
         // ---------- CANCELAR / FINALIZAR ----------
 
+        // Cancela el viaje si todavía se puede (programado, sin salir y sin reservas activas)
         [HttpPost]
         public async Task<IActionResult> Cancelar(int id)
         {
@@ -430,11 +440,14 @@ namespace WebApplication1.Controllers
             return precio;
         }
 
+        // Texto con el que se muestra un bus en las listas (placa, marca, servicio y capacidad)
         private static string TextoBus(string placa, string marca, string modelo, string servicio, int capacidad) =>
             $"{placa} · {marca} {modelo} · {servicio} · {capacidad} asientos";
 
+        // Texto con el que se muestra un chofer en las listas (nombre y usuario)
         private static string TextoChofer(Usuario c) => $"{c.Nombres} {c.Apellidos} · {c.NombreUsuario}";
 
+        // Carga las listas desplegables del formulario: rutas activas, buses operativos y choferes activos
         private async Task CargarListasAsync(ViajeFormVM m, int? busActual, int? choferActual)
         {
             m.Rutas = await OpcionesRutasAsync(incluirTodas: false);
@@ -454,6 +467,7 @@ namespace WebApplication1.Controllers
             m.Choferes = choferes.Select(c => new SelectListItem(TextoChofer(c), c.IdUsuario.ToString())).ToList();
         }
 
+        // Arma la lista desplegable de rutas activas (con la opción "Todas" para el filtro del listado)
         private async Task<List<SelectListItem>> OpcionesRutasAsync(bool incluirTodas)
         {
             var rutas = await _db.Rutas.AsNoTracking()

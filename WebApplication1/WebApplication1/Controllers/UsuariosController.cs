@@ -22,10 +22,12 @@ namespace WebApplication1.Controllers
             _cache = cache;
         }
 
+        // El id del administrador que tiene la sesión abierta
         private int YoId => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var n) ? n : 0;
 
         // ---------- LISTADO ----------
 
+        // Lista las cuentas con filtros y el resumen (activas, inactivas y bloqueadas)
         [HttpGet]
         public async Task<IActionResult> Index(string? rol, string? estado, string? texto)
         {
@@ -74,6 +76,7 @@ namespace WebApplication1.Controllers
 
         // ---------- EDITAR DATOS Y ROL ----------
 
+        // Muestra el formulario con los datos y el rol de la cuenta a editar
         [HttpGet]
         public async Task<IActionResult> Editar(int id)
         {
@@ -96,6 +99,7 @@ namespace WebApplication1.Controllers
             return View(model);
         }
 
+        // Valida y guarda los datos y el rol; cuida que siempre quede un administrador activo y cierra la sesión si cambió el rol
         [HttpPost]
         public async Task<IActionResult> Editar(int id, UsuarioEditarVM model)
         {
@@ -161,6 +165,7 @@ namespace WebApplication1.Controllers
 
         // ---------- ACTIVAR / DESACTIVAR ----------
 
+        // Activa o desactiva la cuenta; no deja desactivar la propia ni al último administrador, y cierra su sesión abierta
         [HttpPost]
         public async Task<IActionResult> CambiarEstado(int id)
         {
@@ -193,6 +198,7 @@ namespace WebApplication1.Controllers
 
         // ---------- DESBLOQUEAR ----------
 
+        // Quita el bloqueo de la cuenta y pone en cero sus intentos fallidos
         [HttpPost]
         public async Task<IActionResult> Desbloquear(int id)
         {
@@ -208,6 +214,7 @@ namespace WebApplication1.Controllers
 
         // ---------- RESTABLECER CONTRASEÑA ----------
 
+        // Muestra el formulario para restablecer la contraseña de otra cuenta (la propia se cambia en Configuración)
         [HttpGet]
         public async Task<IActionResult> Clave(int id)
         {
@@ -221,6 +228,7 @@ namespace WebApplication1.Controllers
             return View(new UsuarioClaveVM { IdUsuario = id, NombreUsuario = u.NombreUsuario, NombreCompleto = $"{u.Nombres} {u.Apellidos}" });
         }
 
+        // Valida y guarda la nueva contraseña, desbloquea la cuenta y cierra sus sesiones abiertas
         [HttpPost]
         public async Task<IActionResult> Clave(int id, UsuarioClaveVM model)
         {

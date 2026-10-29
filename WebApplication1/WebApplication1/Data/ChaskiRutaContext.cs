@@ -24,6 +24,7 @@ namespace WebApplication1.Data
         public DbSet<Pago> Pagos => Set<Pago>();
         public DbSet<Cancelacion> Cancelaciones => Set<Cancelacion>();
 
+        // Le dice a EF Core cómo encajan las clases con las tablas de SQL: nombres, claves, relaciones y tipos de columna
         protected override void OnModelCreating(ModelBuilder mb)
         {
             // Las tablas están en singular

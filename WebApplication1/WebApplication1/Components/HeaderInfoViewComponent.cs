@@ -11,6 +11,7 @@ namespace WebApplication1.Components
 
         public HeaderInfoViewComponent(ChaskiRutaContext db) => _db = db;
 
+        // Cuenta los viajes de hoy y las reservas pendientes de pago para mostrarlos en el encabezado
         public async Task<IViewComponentResult> InvokeAsync()
         {
             var hoy = DateTime.Today;

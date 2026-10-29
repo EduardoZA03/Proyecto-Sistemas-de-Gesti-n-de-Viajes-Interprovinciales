@@ -35,6 +35,7 @@ namespace WebApplication1.Data.Exportacion
 
         // ---------- VENTA ----------
 
+        // Genera el PDF del comprobante de una venta (datos del pasajero, viaje, asientos y pago)
         public static byte[] Venta(DatosComprobanteVenta d, byte[]? logo)
         {
             return Document.Create(documento => documento.Page(pagina =>
@@ -99,6 +100,7 @@ namespace WebApplication1.Data.Exportacion
 
         // ---------- CANCELACIÓN ----------
 
+        // Genera el PDF de la constancia de una cancelación (monto pagado, devolución y penalidad)
         public static byte[] Cancelacion(DatosComprobanteCancelacion d, byte[]? logo)
         {
             return Document.Create(documento => documento.Page(pagina =>
@@ -147,6 +149,7 @@ namespace WebApplication1.Data.Exportacion
 
         // ---------- piezas comunes ----------
 
+        // Configura la página del comprobante (tamaño, márgenes y estilo de texto base)
         private static void Configurar(PageDescriptor pagina)
         {
             pagina.Size(PageSizes.A5);
@@ -154,6 +157,7 @@ namespace WebApplication1.Data.Exportacion
             pagina.DefaultTextStyle(x => x.FontSize(10).FontColor("#1F2937"));
         }
 
+        // Dibuja la cabecera del comprobante: logo, datos de la empresa, título, código y fecha
         private static void Cabecera(IContainer contenedor, DatosEmpresa empresa, byte[]? logo, string titulo, string codigo, string fecha)
         {
             contenedor.Column(col =>
@@ -182,6 +186,7 @@ namespace WebApplication1.Data.Exportacion
             });
         }
 
+        // Dibuja un bloque con título y su contenido (una sección del comprobante)
         private static void Bloque(IContainer contenedor, string titulo, Action<ColumnDescriptor> contenido)
         {
             contenedor.Border(0.8f).BorderColor(Linea).Padding(8).Column(col =>
@@ -192,6 +197,7 @@ namespace WebApplication1.Data.Exportacion
             });
         }
 
+        // Dibuja un par etiqueta/valor apilado (la etiqueta encima del dato)
         private static void Dato(ColumnDescriptor col, string etiqueta, string valor)
         {
             col.Item().Row(r =>
@@ -201,6 +207,7 @@ namespace WebApplication1.Data.Exportacion
             });
         }
 
+        // Dibuja una fila con etiqueta a la izquierda y valor a la derecha (para los montos)
         private static void Fila(ColumnDescriptor col, string etiqueta, string valor, string? color = null)
         {
             col.Item().Row(r =>
@@ -211,6 +218,7 @@ namespace WebApplication1.Data.Exportacion
             });
         }
 
+        // Dibuja el pie del comprobante con el aviso legal
         private static void Pie(IContainer contenedor)
         {
             contenedor.Column(col =>
