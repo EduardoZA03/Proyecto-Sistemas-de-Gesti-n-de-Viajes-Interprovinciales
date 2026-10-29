@@ -1,9 +1,5 @@
-/* =====================================================================
-   Chaski Ruta - Sistema de Gestión de Viajes Interprovinciales
-   Base de datos: ChaskiRuta (SQL Server / LocalDB)
-   Coincide con las clases de WebApplication1/Models
-   El script se puede ejecutar varias veces sin duplicar datos.
-   ===================================================================== */
+/* Chaski Ruta - Base de datos ChaskiRuta (SQL Server / LocalDB).
+   Se puede ejecutar varias veces sin duplicar datos. */
 
 IF DB_ID(N'ChaskiRuta') IS NULL
     CREATE DATABASE ChaskiRuta;
@@ -12,7 +8,7 @@ GO
 USE ChaskiRuta;
 GO
 
-/* ------------------------------- TABLAS ------------------------------ */
+-- Tablas
 
 IF OBJECT_ID(N'dbo.Rol') IS NULL
 CREATE TABLE dbo.Rol (
@@ -217,7 +213,7 @@ BEGIN
 END
 GO
 
-/* ------------------------------ ÍNDICES ------------------------------ */
+-- Índices
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Viaje_Busqueda')
     CREATE INDEX IX_Viaje_Busqueda ON dbo.Viaje (IdOrigen, IdDestino, FechaSalida);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Reserva_Usuario')
@@ -226,7 +222,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Reserva_Viaje')
     CREATE INDEX IX_Reserva_Viaje ON dbo.Reserva (IdViaje);
 GO
 
-/* --------------------------- DATOS DE PRUEBA ------------------------- */
+-- Datos de prueba
 
 IF NOT EXISTS (SELECT 1 FROM dbo.Rol)
 INSERT dbo.Rol (NombreRol, Descripcion) VALUES
@@ -340,7 +336,7 @@ FROM (VALUES
 JOIN dbo.Rol r ON r.NombreRol = u.Rol;
 GO
 
-/* ------------- DATOS DE EJEMPLO: viajes pasados, reservas, pagos ------------- */
+-- Datos de ejemplo: viajes pasados, reservas y pagos
 IF NOT EXISTS (SELECT 1 FROM dbo.Reserva)
 BEGIN
     SET XACT_ABORT ON;
@@ -451,8 +447,7 @@ BEGIN
 END;
 GO
 
-/* ------------------- CONTROL DE VIAJES: chofer y horas reales ------------------- */
-/* Bases creadas con una versión anterior: agrega el chofer asignado a cada viaje y las horas reales de salida y llegada */
+-- Control de viajes: agrega a cada viaje el chofer y las horas reales de salida y llegada
 IF COL_LENGTH(N'dbo.Viaje', N'IdChofer') IS NULL
     ALTER TABLE dbo.Viaje ADD IdChofer INT NULL CONSTRAINT FK_Viaje_Chofer REFERENCES dbo.Usuario(IdUsuario);
 IF COL_LENGTH(N'dbo.Viaje', N'FechaHoraSalidaReal') IS NULL
@@ -506,11 +501,8 @@ WHERE v.Estado = N'Finalizado' AND v.IdChofer IS NOT NULL
   AND v.FechaHoraSalidaReal IS NULL AND v.FechaHoraLlegadaReal IS NULL;
 GO
 
-/* ------------------- DATOS ADICIONALES: más ciudades, flota, personal, viajes y ventas ------------------- */
-/* Se carga una sola vez (se reconoce por el bus JKL-012). Los viajes se reparten entre hoy -18 y hoy +14 días:
-   los ya cumplidos quedan Finalizados con horas reales (algunos con retraso), los de hoy que ya salieron quedan
-   En ruta y los demás Programados. Cada bus hace un viaje al día en su horario fijo y con su chofer fijo, así que
-   nunca se cruzan. */
+/* Datos adicionales (ciudades, flota, personal, viajes y ventas). Se carga una sola vez (se reconoce por el bus
+   JKL-012). Cada bus hace un viaje al día en su horario fijo con su chofer fijo, así que nunca se cruzan. */
 IF NOT EXISTS (SELECT 1 FROM dbo.Bus WHERE Placa = N'JKL-012')
 BEGIN
     SET XACT_ABORT ON;
@@ -858,7 +850,7 @@ BEGIN
 END;
 GO
 
-/* ------------------------------ COMPROBACIÓN ------------------------- */
+-- Comprobación
 SELECT N'Rol' AS Tabla, COUNT(*) AS Filas FROM dbo.Rol UNION ALL
 SELECT N'Usuario',  COUNT(*) FROM dbo.Usuario  UNION ALL
 SELECT N'Ciudad',   COUNT(*) FROM dbo.Ciudad   UNION ALL
