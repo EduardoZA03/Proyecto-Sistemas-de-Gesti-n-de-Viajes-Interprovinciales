@@ -187,7 +187,7 @@ El Administrador puede crear más cuentas desde **Usuarios → Nueva cuenta**.
 
 ## Base de datos
 
-La base `ChaskiRuta` tiene 15 tablas (`Viaje` guarda además el chofer y las horas reales de salida y llegada):
+La base `ChaskiRuta` tiene 16 tablas (`Viaje` guarda además el chofer y las horas reales de salida y llegada, y `Auditoria` guarda el historial de cambios):
 
 | Grupo | Tablas |
 |---|---|
@@ -195,6 +195,19 @@ La base `ChaskiRuta` tiene 15 tablas (`Viaje` guarda además el chofer y las hor
 | Empresa | `Empresa`, `Terminal`, `Bus`, `Asiento` |
 | Rutas y viajes | `Ciudad`, `Ruta`, `Viaje`, `Tarifa` |
 | Ventas | `Reserva`, `ReservaAsiento`, `Pasajero`, `Pago`, `Cancelacion` |
+| Control | `Auditoria` |
+
+### Reglas que hace cumplir la propia base de datos
+
+El script (que se puede repetir sin duplicar datos) deja estas protecciones, además de las validaciones de la aplicación:
+
+- **Valores permitidos** (`CHECK`): estados de reservas, pagos, viajes, buses, cancelaciones, usuarios, rutas y ciudades; métodos de pago; servicios de bus; tipos de tarifa y de documento; montos y precios no negativos; y que la llegada real de un viaje sea posterior a su salida real.
+- **Viaje y ruta coherentes**: el origen y el destino de un viaje deben ser los de su ruta (llave foránea compuesta).
+- **Sin doble venta de asientos**: un índice único sobre la vista `vw_AsientosOcupados` impide que un mismo asiento esté en dos reservas activas del mismo viaje, aunque dos ventas lleguen a la vez. Al cancelar una reserva el asiento queda libre otra vez.
+- **Índices** en las llaves foráneas y en las columnas que más se filtran (por ejemplo, pagos por reserva o viajes por bus y fecha).
+- **Auditoría**: triggers en `Reserva`, `Pago`, `Cancelacion`, `Viaje` y `Usuario` guardan en `Auditoria` cada alta, cambio y baja, con el detalle de lo que cambió (por ejemplo, `Estado: Pendiente -> Confirmada`), la fecha y el usuario de la base. Las contraseñas no se guardan en el historial, solo el aviso de que cambiaron.
+
+Si una base que ya tenías contiene datos que incumplen alguna regla, el script **no falla**: la regla queda activa solo para los datos nuevos y se muestra un aviso con la cantidad de filas a corregir.
 
 El script incluye **datos de ejemplo abundantes**:
 

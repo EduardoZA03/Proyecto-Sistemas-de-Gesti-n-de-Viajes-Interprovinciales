@@ -850,6 +850,235 @@ BEGIN
 END;
 GO
 
+-- ---------------------------------------------------------------------------
+-- Integridad, rendimiento y auditoría (se puede ejecutar varias veces)
+-- Va al final para no estorbar la carga de los datos de ejemplo. Si una base
+-- existente ya tiene datos que incumplen una regla, la regla se agrega solo para
+-- los datos nuevos (WITH NOCHECK) y se muestra un aviso.
+-- ---------------------------------------------------------------------------
+
+-- 1. Valores permitidos en los estados y catálogos (antes eran texto libre)
+DECLARE @reglas TABLE (Id INT IDENTITY(1,1), Tabla SYSNAME, Nombre SYSNAME, Condicion NVARCHAR(MAX));
+INSERT @reglas (Tabla, Nombre, Condicion) VALUES
+ (N'Rol',            N'CK_Rol_Estado',             N'Estado IN (N''Activo'', N''Inactivo'')'),
+ (N'Usuario',        N'CK_Usuario_Estado',         N'Estado IN (N''Activo'', N''Inactivo'')'),
+ (N'Usuario',        N'CK_Usuario_Intentos',       N'IntentosFallidos >= 0'),
+ (N'Ciudad',         N'CK_Ciudad_Estado',          N'Estado IN (N''Activo'', N''Inactivo'')'),
+ (N'Empresa',        N'CK_Empresa_Estado',         N'Estado IN (N''Activo'', N''Inactivo'')'),
+ (N'Terminal',       N'CK_Terminal_Estado',        N'Estado IN (N''Activo'', N''Inactivo'')'),
+ (N'Ruta',           N'CK_Ruta_Estado',            N'Estado IN (N''Activo'', N''Inactivo'')'),
+ (N'Bus',            N'CK_Bus_Estado',             N'Estado IN (N''Operativo'', N''Mantenimiento'', N''Baja'')'),
+ (N'Bus',            N'CK_Bus_Servicio',           N'Servicio IN (N''Ejecutivo'', N''Semi Cama'', N''Cama Suite'')'),
+ (N'Asiento',        N'CK_Asiento_Estado',         N'Estado IN (N''Disponible'', N''Ocupado'')'),
+ (N'Viaje',          N'CK_Viaje_Estado',           N'Estado IN (N''Programado'', N''En ruta'', N''Finalizado'', N''Cancelado'')'),
+ (N'Viaje',          N'CK_Viaje_HorasReales',      N'FechaHoraSalidaReal IS NULL OR FechaHoraLlegadaReal IS NULL OR FechaHoraLlegadaReal > FechaHoraSalidaReal'),
+ (N'Tarifa',         N'CK_Tarifa_Tipo',            N'TipoTarifa IN (N''General'', N''Estudiante'', N''Tercera Edad'', N''Niño'')'),
+ (N'Tarifa',         N'CK_Tarifa_Estado',          N'Estado IN (N''Activo'', N''Inactivo'')'),
+ (N'Reserva',        N'CK_Reserva_Estado',         N'Estado IN (N''Pendiente'', N''Confirmada'', N''Cancelada'')'),
+ (N'Reserva',        N'CK_Reserva_Total',          N'Total >= 0'),
+ (N'ReservaAsiento', N'CK_RA_Estado',              N'Estado IN (N''Reservado'', N''Cancelado'')'),
+ (N'ReservaAsiento', N'CK_RA_Precio',              N'Precio >= 0'),
+ (N'Pasajero',       N'CK_Pasajero_TipoDocumento', N'TipoDocumento IN (N''DNI'', N''Carné Extranjería'', N''Pasaporte'')'),
+ (N'Pago',           N'CK_Pago_Estado',            N'Estado IN (N''Pendiente'', N''Pagado'', N''Anulado'')'),
+ (N'Pago',           N'CK_Pago_Metodo',            N'MetodoPago IN (N''Efectivo'', N''Tarjeta'', N''Yape'', N''Plin'', N''Transferencia'')'),
+ (N'Cancelacion',    N'CK_Cancelacion_Estado',     N'Estado IN (N''Procesada'', N''Reembolsado'', N''Sin devolución'')'),
+ (N'Cancelacion',    N'CK_Cancelacion_Monto',      N'MontoReembolso >= 0');
+
+DECLARE @i INT = 1, @n INT = (SELECT COUNT(*) FROM @reglas), @t SYSNAME, @nom SYSNAME, @cond NVARCHAR(MAX), @sql NVARCHAR(MAX), @malos INT;
+WHILE @i <= @n
+BEGIN
+    SELECT @t = Tabla, @nom = Nombre, @cond = Condicion FROM @reglas WHERE Id = @i;
+    IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = @nom)
+    BEGIN
+        SET @sql = N'SELECT @m = COUNT(*) FROM dbo.' + QUOTENAME(@t) + N' WHERE NOT (' + @cond + N')';
+        EXEC sp_executesql @sql, N'@m INT OUTPUT', @m = @malos OUTPUT;
+        SET @sql = N'ALTER TABLE dbo.' + QUOTENAME(@t) + CASE WHEN @malos = 0 THEN N' WITH CHECK' ELSE N' WITH NOCHECK' END
+                 + N' ADD CONSTRAINT ' + QUOTENAME(@nom) + N' CHECK (' + @cond + N')';
+        EXEC (@sql);
+        IF @malos > 0
+            PRINT N'AVISO: ' + CAST(@malos AS NVARCHAR(10)) + N' fila(s) de ' + @t + N' incumplen ' + @nom + N'; la regla solo vale para los datos nuevos.';
+    END;
+    SET @i += 1;
+END;
+GO
+
+-- 2. El origen y el destino de un viaje deben ser los de su ruta (antes podían quedar distintos)
+IF NOT EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = N'UQ_Ruta_Id_Extremos')
+    ALTER TABLE dbo.Ruta ADD CONSTRAINT UQ_Ruta_Id_Extremos UNIQUE (IdRuta, IdOrigen, IdDestino);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_Viaje_Ruta_Extremos')
+BEGIN
+    DECLARE @incoherentes INT = (SELECT COUNT(*) FROM dbo.Viaje v JOIN dbo.Ruta r ON r.IdRuta = v.IdRuta
+                                 WHERE v.IdOrigen <> r.IdOrigen OR v.IdDestino <> r.IdDestino);
+    IF @incoherentes = 0
+        ALTER TABLE dbo.Viaje WITH CHECK ADD CONSTRAINT FK_Viaje_Ruta_Extremos
+            FOREIGN KEY (IdRuta, IdOrigen, IdDestino) REFERENCES dbo.Ruta (IdRuta, IdOrigen, IdDestino);
+    ELSE
+    BEGIN
+        ALTER TABLE dbo.Viaje WITH NOCHECK ADD CONSTRAINT FK_Viaje_Ruta_Extremos
+            FOREIGN KEY (IdRuta, IdOrigen, IdDestino) REFERENCES dbo.Ruta (IdRuta, IdOrigen, IdDestino);
+        PRINT N'AVISO: ' + CAST(@incoherentes AS NVARCHAR(10)) + N' viaje(s) tienen un origen o destino distinto al de su ruta.';
+    END;
+END;
+GO
+
+-- 3. Índices en las llaves foráneas y en las columnas que más se filtran
+DECLARE @idx TABLE (Nombre SYSNAME, Tabla SYSNAME, Columnas NVARCHAR(200));
+INSERT @idx (Nombre, Tabla, Columnas) VALUES
+ (N'IX_Terminal_Empresa',        N'Terminal',       N'IdEmpresa'),
+ (N'IX_Bus_Empresa',             N'Bus',            N'IdEmpresa'),
+ (N'IX_Usuario_Rol',             N'Usuario',        N'IdRol'),
+ (N'IX_Ruta_Destino',            N'Ruta',           N'IdDestino'),
+ (N'IX_Viaje_Ruta',              N'Viaje',          N'IdRuta'),
+ (N'IX_Viaje_Bus_Fecha',         N'Viaje',          N'IdBus, FechaSalida'),
+ (N'IX_Viaje_Destino',           N'Viaje',          N'IdDestino'),
+ (N'IX_ReservaAsiento_Asiento',  N'ReservaAsiento', N'IdAsiento'),
+ (N'IX_ReservaAsiento_Tarifa',   N'ReservaAsiento', N'IdTarifa'),
+ (N'IX_Pasajero_Reserva',        N'Pasajero',       N'IdReserva'),
+ (N'IX_Pasajero_Documento',      N'Pasajero',       N'NroDocumento, TipoDocumento'),
+ (N'IX_Pago_Reserva',            N'Pago',           N'IdReserva'),
+ (N'IX_Pago_Fecha',              N'Pago',           N'FechaPago'),
+ (N'IX_Reserva_Estado_Fecha',    N'Reserva',        N'Estado, FechaReserva'),
+ (N'IX_Cancelacion_Fecha',       N'Cancelacion',    N'FechaCancelacion');
+DECLARE @j INT = 1, @m INT = (SELECT COUNT(*) FROM @idx), @s NVARCHAR(MAX);
+DECLARE @lista TABLE (K INT IDENTITY(1,1), Nombre SYSNAME, Tabla SYSNAME, Columnas NVARCHAR(200));
+INSERT @lista (Nombre, Tabla, Columnas) SELECT Nombre, Tabla, Columnas FROM @idx;
+WHILE @j <= @m
+BEGIN
+    SELECT @s = N'CREATE INDEX ' + QUOTENAME(Nombre) + N' ON dbo.' + QUOTENAME(Tabla) + N' (' + Columnas + N')'
+    FROM @lista WHERE K = @j AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = Nombre);
+    IF @s IS NOT NULL EXEC (@s);
+    SET @s = NULL; SET @j += 1;
+END;
+GO
+
+-- 4. Un asiento no puede estar en dos reservas activas del mismo viaje, y lo garantiza la base de datos
+--    (además de la transacción serializable de la aplicación): vista indexada con índice único.
+SET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON; SET ANSI_PADDING ON; SET ANSI_WARNINGS ON; SET ARITHABORT ON; SET CONCAT_NULL_YIELDS_NULL ON;
+GO
+IF OBJECT_ID(N'dbo.vw_AsientosOcupados') IS NULL
+    EXEC (N'CREATE VIEW dbo.vw_AsientosOcupados WITH SCHEMABINDING AS
+            SELECT r.IdViaje, ra.IdAsiento, ra.IdReservaAsiento
+            FROM dbo.ReservaAsiento ra
+            JOIN dbo.Reserva r ON r.IdReserva = ra.IdReserva
+            WHERE ra.Estado <> N''Cancelado'' AND r.Estado <> N''Cancelada''');
+GO
+SET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON; SET ANSI_PADDING ON; SET ANSI_WARNINGS ON; SET ARITHABORT ON; SET CONCAT_NULL_YIELDS_NULL ON;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_AsientosOcupados' AND object_id = OBJECT_ID(N'dbo.vw_AsientosOcupados'))
+BEGIN TRY
+    CREATE UNIQUE CLUSTERED INDEX UX_AsientosOcupados ON dbo.vw_AsientosOcupados (IdViaje, IdAsiento);
+END TRY
+BEGIN CATCH
+    PRINT N'AVISO: no se pudo crear el índice único de asientos (hay asientos repetidos en reservas activas): ' + ERROR_MESSAGE();
+END CATCH;
+GO
+
+-- 5. Auditoría: historial de cambios en las tablas sensibles
+IF OBJECT_ID(N'dbo.Auditoria') IS NULL
+BEGIN
+    CREATE TABLE dbo.Auditoria (
+        IdAuditoria BIGINT IDENTITY(1,1) CONSTRAINT PK_Auditoria PRIMARY KEY,
+        Tabla       NVARCHAR(50)  NOT NULL,
+        IdRegistro  INT           NOT NULL,
+        Accion      NVARCHAR(10)  NOT NULL CONSTRAINT CK_Auditoria_Accion CHECK (Accion IN (N'INSERT', N'UPDATE', N'DELETE')),
+        Detalle     NVARCHAR(500) NOT NULL CONSTRAINT DF_Auditoria_Detalle DEFAULT N'',
+        UsuarioBD   NVARCHAR(128) NOT NULL CONSTRAINT DF_Auditoria_Usuario DEFAULT SUSER_SNAME(),
+        Aplicacion  NVARCHAR(128) NOT NULL CONSTRAINT DF_Auditoria_App DEFAULT APP_NAME(),
+        FechaHora   DATETIME2     NOT NULL CONSTRAINT DF_Auditoria_Fecha DEFAULT SYSDATETIME()
+    );
+    CREATE INDEX IX_Auditoria_Registro ON dbo.Auditoria (Tabla, IdRegistro);
+    CREATE INDEX IX_Auditoria_Fecha ON dbo.Auditoria (FechaHora);
+END;
+GO
+
+CREATE OR ALTER TRIGGER dbo.TR_Reserva_Auditoria ON dbo.Reserva AFTER INSERT, UPDATE, DELETE AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT dbo.Auditoria (Tabla, IdRegistro, Accion, Detalle)
+    SELECT N'Reserva', i.IdReserva, N'INSERT', CONCAT(N'Código ', i.CodigoReserva, N'; estado ', i.Estado, N'; total ', i.Total)
+    FROM inserted i WHERE NOT EXISTS (SELECT 1 FROM deleted d WHERE d.IdReserva = i.IdReserva)
+    UNION ALL
+    SELECT N'Reserva', i.IdReserva, N'UPDATE', CONCAT(N'Estado: ', d.Estado, N' -> ', i.Estado, N'; total: ', d.Total, N' -> ', i.Total)
+    FROM inserted i JOIN deleted d ON d.IdReserva = i.IdReserva
+    WHERE EXISTS (SELECT i.Estado, i.Total EXCEPT SELECT d.Estado, d.Total)
+    UNION ALL
+    SELECT N'Reserva', d.IdReserva, N'DELETE', CONCAT(N'Código ', d.CodigoReserva, N'; estado ', d.Estado)
+    FROM deleted d WHERE NOT EXISTS (SELECT 1 FROM inserted i WHERE i.IdReserva = d.IdReserva);
+END;
+GO
+CREATE OR ALTER TRIGGER dbo.TR_Pago_Auditoria ON dbo.Pago AFTER INSERT, UPDATE, DELETE AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT dbo.Auditoria (Tabla, IdRegistro, Accion, Detalle)
+    SELECT N'Pago', i.IdPago, N'INSERT', CONCAT(N'Reserva ', i.IdReserva, N'; ', i.MetodoPago, N'; monto ', i.Monto, N'; estado ', i.Estado)
+    FROM inserted i WHERE NOT EXISTS (SELECT 1 FROM deleted d WHERE d.IdPago = i.IdPago)
+    UNION ALL
+    SELECT N'Pago', i.IdPago, N'UPDATE', CONCAT(N'Estado: ', d.Estado, N' -> ', i.Estado, N'; monto: ', d.Monto, N' -> ', i.Monto)
+    FROM inserted i JOIN deleted d ON d.IdPago = i.IdPago
+    WHERE EXISTS (SELECT i.Estado, i.Monto EXCEPT SELECT d.Estado, d.Monto)
+    UNION ALL
+    SELECT N'Pago', d.IdPago, N'DELETE', CONCAT(N'Reserva ', d.IdReserva, N'; monto ', d.Monto)
+    FROM deleted d WHERE NOT EXISTS (SELECT 1 FROM inserted i WHERE i.IdPago = d.IdPago);
+END;
+GO
+CREATE OR ALTER TRIGGER dbo.TR_Cancelacion_Auditoria ON dbo.Cancelacion AFTER INSERT, UPDATE, DELETE AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT dbo.Auditoria (Tabla, IdRegistro, Accion, Detalle)
+    SELECT N'Cancelacion', i.IdCancelacion, N'INSERT', CONCAT(N'Reserva ', i.IdReserva, N'; motivo ', i.Motivo, N'; reembolso ', i.MontoReembolso, N'; ', i.Estado)
+    FROM inserted i WHERE NOT EXISTS (SELECT 1 FROM deleted d WHERE d.IdCancelacion = i.IdCancelacion)
+    UNION ALL
+    SELECT N'Cancelacion', i.IdCancelacion, N'UPDATE', CONCAT(N'Reembolso: ', d.MontoReembolso, N' -> ', i.MontoReembolso, N'; estado: ', d.Estado, N' -> ', i.Estado)
+    FROM inserted i JOIN deleted d ON d.IdCancelacion = i.IdCancelacion
+    WHERE EXISTS (SELECT i.MontoReembolso, i.Estado EXCEPT SELECT d.MontoReembolso, d.Estado)
+    UNION ALL
+    SELECT N'Cancelacion', d.IdCancelacion, N'DELETE', CONCAT(N'Reserva ', d.IdReserva)
+    FROM deleted d WHERE NOT EXISTS (SELECT 1 FROM inserted i WHERE i.IdCancelacion = d.IdCancelacion);
+END;
+GO
+CREATE OR ALTER TRIGGER dbo.TR_Viaje_Auditoria ON dbo.Viaje AFTER INSERT, UPDATE, DELETE AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT dbo.Auditoria (Tabla, IdRegistro, Accion, Detalle)
+    SELECT N'Viaje', i.IdViaje, N'INSERT', CONCAT(N'Ruta ', i.IdRuta, N'; bus ', i.IdBus, N'; chofer ', i.IdChofer, N'; salida ', i.FechaSalida, N' ', i.HoraSalida, N'; ', i.Estado)
+    FROM inserted i WHERE NOT EXISTS (SELECT 1 FROM deleted d WHERE d.IdViaje = i.IdViaje)
+    UNION ALL
+    SELECT N'Viaje', i.IdViaje, N'UPDATE',
+           CONCAT(CASE WHEN i.Estado <> d.Estado THEN CONCAT(N'Estado: ', d.Estado, N' -> ', i.Estado, N'. ') ELSE N'' END,
+                  CASE WHEN i.IdBus <> d.IdBus THEN CONCAT(N'Bus: ', d.IdBus, N' -> ', i.IdBus, N'. ') ELSE N'' END,
+                  CASE WHEN EXISTS (SELECT i.IdChofer EXCEPT SELECT d.IdChofer) THEN CONCAT(N'Chofer: ', d.IdChofer, N' -> ', i.IdChofer, N'. ') ELSE N'' END,
+                  CASE WHEN i.FechaSalida <> d.FechaSalida OR i.HoraSalida <> d.HoraSalida THEN CONCAT(N'Salida: ', d.FechaSalida, N' ', d.HoraSalida, N' -> ', i.FechaSalida, N' ', i.HoraSalida, N'. ') ELSE N'' END,
+                  CASE WHEN i.PrecioBase <> d.PrecioBase THEN CONCAT(N'Precio: ', d.PrecioBase, N' -> ', i.PrecioBase, N'. ') ELSE N'' END,
+                  CASE WHEN EXISTS (SELECT i.FechaHoraSalidaReal EXCEPT SELECT d.FechaHoraSalidaReal) THEN N'Hora real de salida registrada. ' ELSE N'' END,
+                  CASE WHEN EXISTS (SELECT i.FechaHoraLlegadaReal EXCEPT SELECT d.FechaHoraLlegadaReal) THEN N'Hora real de llegada registrada. ' ELSE N'' END)
+    FROM inserted i JOIN deleted d ON d.IdViaje = i.IdViaje
+    WHERE EXISTS (SELECT i.Estado, i.IdBus, i.IdChofer, i.FechaSalida, i.HoraSalida, i.PrecioBase, i.FechaHoraSalidaReal, i.FechaHoraLlegadaReal
+                  EXCEPT SELECT d.Estado, d.IdBus, d.IdChofer, d.FechaSalida, d.HoraSalida, d.PrecioBase, d.FechaHoraSalidaReal, d.FechaHoraLlegadaReal)
+    UNION ALL
+    SELECT N'Viaje', d.IdViaje, N'DELETE', CONCAT(N'Ruta ', d.IdRuta, N'; salida ', d.FechaSalida, N' ', d.HoraSalida, N'; ', d.Estado)
+    FROM deleted d WHERE NOT EXISTS (SELECT 1 FROM inserted i WHERE i.IdViaje = d.IdViaje);
+END;
+GO
+CREATE OR ALTER TRIGGER dbo.TR_Usuario_Auditoria ON dbo.Usuario AFTER INSERT, UPDATE, DELETE AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT dbo.Auditoria (Tabla, IdRegistro, Accion, Detalle)
+    SELECT N'Usuario', i.IdUsuario, N'INSERT', CONCAT(N'Usuario ', i.NombreUsuario, N'; rol ', i.IdRol, N'; estado ', i.Estado)
+    FROM inserted i WHERE NOT EXISTS (SELECT 1 FROM deleted d WHERE d.IdUsuario = i.IdUsuario)
+    UNION ALL
+    SELECT N'Usuario', i.IdUsuario, N'UPDATE',
+           CONCAT(CASE WHEN i.Estado <> d.Estado THEN CONCAT(N'Estado: ', d.Estado, N' -> ', i.Estado, N'. ') ELSE N'' END,
+                  CASE WHEN i.IdRol <> d.IdRol THEN CONCAT(N'Rol: ', d.IdRol, N' -> ', i.IdRol, N'. ') ELSE N'' END,
+                  CASE WHEN EXISTS (SELECT i.ContrasenaHash EXCEPT SELECT d.ContrasenaHash) THEN N'Contraseña modificada. ' ELSE N'' END)
+    FROM inserted i JOIN deleted d ON d.IdUsuario = i.IdUsuario
+    WHERE EXISTS (SELECT i.Estado, i.IdRol, i.ContrasenaHash EXCEPT SELECT d.Estado, d.IdRol, d.ContrasenaHash)
+    UNION ALL
+    SELECT N'Usuario', d.IdUsuario, N'DELETE', CONCAT(N'Usuario ', d.NombreUsuario)
+    FROM deleted d WHERE NOT EXISTS (SELECT 1 FROM inserted i WHERE i.IdUsuario = d.IdUsuario);
+END;
+GO
+
 -- Comprobación
 SELECT N'Rol' AS Tabla, COUNT(*) AS Filas FROM dbo.Rol UNION ALL
 SELECT N'Usuario',  COUNT(*) FROM dbo.Usuario  UNION ALL

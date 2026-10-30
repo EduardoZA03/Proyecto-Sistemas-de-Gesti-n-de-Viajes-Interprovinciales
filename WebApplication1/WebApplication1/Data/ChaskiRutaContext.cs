@@ -29,20 +29,20 @@ namespace WebApplication1.Data
         {
             // Las tablas están en singular
             mb.Entity<Rol>().ToTable("Rol");
-            mb.Entity<Usuario>().ToTable("Usuario");
+            mb.Entity<Usuario>().ToTable("Usuario", t => t.HasTrigger("TR_Usuario_Auditoria"));
             mb.Entity<Ciudad>().ToTable("Ciudad");
             mb.Entity<Empresa>().ToTable("Empresa");
             mb.Entity<Terminal>().ToTable("Terminal");
             mb.Entity<Bus>().ToTable("Bus");
             mb.Entity<Asiento>().ToTable("Asiento");
             mb.Entity<Ruta>().ToTable("Ruta");
-            mb.Entity<Viaje>().ToTable("Viaje");
+            mb.Entity<Viaje>().ToTable("Viaje", t => t.HasTrigger("TR_Viaje_Auditoria"));
             mb.Entity<Tarifa>().ToTable("Tarifa");
-            mb.Entity<Reserva>().ToTable("Reserva");
+            mb.Entity<Reserva>().ToTable("Reserva", t => t.HasTrigger("TR_Reserva_Auditoria"));
             mb.Entity<ReservaAsiento>().ToTable("ReservaAsiento");
             mb.Entity<Pasajero>().ToTable("Pasajero");
-            mb.Entity<Pago>().ToTable("Pago");
-            mb.Entity<Cancelacion>().ToTable("Cancelacion");
+            mb.Entity<Pago>().ToTable("Pago", t => t.HasTrigger("TR_Pago_Auditoria"));
+            mb.Entity<Cancelacion>().ToTable("Cancelacion", t => t.HasTrigger("TR_Cancelacion_Auditoria"));
 
             // Claves primarias (se llaman IdXxx, EF no las detecta solo)
             mb.Entity<Rol>().HasKey(e => e.IdRol);
