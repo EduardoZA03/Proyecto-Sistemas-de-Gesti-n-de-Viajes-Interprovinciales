@@ -134,7 +134,7 @@ El Administrador puede crear más cuentas desde **Usuarios → Nueva cuenta**.
 
 **Estados de un viaje.** `Programado` → `En ruta` → `Finalizado` (o `Cancelado`).
 - El **chofer** o el administrador marcan *Partió* y *Llegó*; así se guardan las horas reales.
-- Un servicio en segundo plano (`ActualizadorEstadoViajes`) revisa los viajes cada 5 minutos: pasa a `En ruta` los que ya llegaron a su hora de salida y cierra como `Finalizado` los que superan 3 horas la llegada prevista. Estos cambios automáticos **no inventan horas reales**: esas solo las registra una persona. Por eso el reporte de retrasos avisa de los viajes cerrados sin hora real.
+- Un servicio en segundo plano (`ActualizadorEstadoViajes`) revisa los viajes cada 5 minutos: pasa a `En ruta` los viajes cuya partida nadie registró 30 minutos después de su hora de salida, y cierra como `Finalizado` los que siguen abiertos 30 minutos después de su llegada prevista (ambos plazos se cambian en `appsettings.json`). Estos cambios automáticos **no inventan horas reales**: esas solo las registra una persona. Por eso el reporte de retrasos avisa de los viajes cerrados sin hora real.
 - Un viaje `En ruta` no se puede editar ni cancelar.
 - Los tiempos (descanso entre viajes, margen para marcar la partida, tolerancia de retraso, cierre automático, intervalo de revisión) están en la sección `Viajes` de `appsettings.json` y los administra la clase `ConfiguracionViajes`, que sigue el patrón **Singleton**: una sola instancia, creada una vez y compartida por todo el sistema (reservas, control de viajes, reportes y servicio automático usan siempre los mismos valores).
 

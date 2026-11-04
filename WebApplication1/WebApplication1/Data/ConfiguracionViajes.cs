@@ -21,7 +21,8 @@ namespace WebApplication1.Data
         public TimeSpan DuracionPorDefecto { get; private set; } = TimeSpan.FromHours(12);
         public TimeSpan Descanso { get; private set; } = TimeSpan.FromHours(2);
         public TimeSpan MargenPartida { get; private set; } = TimeSpan.FromHours(1);
-        public TimeSpan ToleranciaCierreAutomatico { get; private set; } = TimeSpan.FromHours(3);
+        public TimeSpan ToleranciaSalidaAutomatica { get; private set; } = TimeSpan.FromMinutes(30);
+        public TimeSpan ToleranciaCierreAutomatico { get; private set; } = TimeSpan.FromMinutes(30);
         public TimeSpan ToleranciaRetraso { get; private set; } = TimeSpan.FromMinutes(15);
         public TimeSpan IntervaloActualizacion { get; private set; } = TimeSpan.FromMinutes(5);
 
@@ -41,7 +42,8 @@ namespace WebApplication1.Data
                 DuracionPorDefecto = Horas(seccion, "DuracionPorDefectoHoras", DuracionPorDefecto, minimo: 1);
                 Descanso = Horas(seccion, "DescansoHoras", Descanso, minimo: 0);
                 MargenPartida = Horas(seccion, "MargenPartidaHoras", MargenPartida, minimo: 0);
-                ToleranciaCierreAutomatico = Horas(seccion, "ToleranciaCierreAutomaticoHoras", ToleranciaCierreAutomatico, minimo: 0);
+                ToleranciaSalidaAutomatica = Minutos(seccion, "ToleranciaSalidaAutomaticaMinutos", ToleranciaSalidaAutomatica, minimo: 0);
+                ToleranciaCierreAutomatico = Minutos(seccion, "ToleranciaCierreAutomaticoMinutos", ToleranciaCierreAutomatico, minimo: 0);
                 ToleranciaRetraso = Minutos(seccion, "ToleranciaRetrasoMinutos", ToleranciaRetraso, minimo: 0);
 
                 // Se revisa como mínimo cada 5 segundos

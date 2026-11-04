@@ -24,6 +24,9 @@ namespace WebApplication1.Data
         // La partida se puede marcar desde este tiempo antes de la salida programada
         public static TimeSpan MargenPartida => ConfiguracionViajes.Instancia.MargenPartida;
 
+        // Si nadie marca la partida, el sistema pasa solo el viaje a "En ruta" cuando pasa la hora de salida más este tiempo
+        public static TimeSpan ToleranciaSalidaAutomatica => ConfiguracionViajes.Instancia.ToleranciaSalidaAutomatica;
+
         // Si nadie marca la llegada, el sistema cierra solo el viaje cuando pasa la llegada estimada más este tiempo
         public static TimeSpan ToleranciaCierreAutomatico => ConfiguracionViajes.Instancia.ToleranciaCierreAutomatico;
 
