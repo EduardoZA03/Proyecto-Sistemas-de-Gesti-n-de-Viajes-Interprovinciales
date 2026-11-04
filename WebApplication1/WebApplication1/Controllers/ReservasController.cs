@@ -450,7 +450,7 @@ namespace WebApplication1.Controllers
                 v.PrecioBase,
                 PrecioMinimo = v.Tarifas.Where(t => t.Estado == "Activo").Min(t => (decimal?)t.Precio),
                 Capacidad = v.Bus.CapacidadAsientos,
-                Vendidos = v.Reservas.Where(r => r.Estado != "Cancelada").Sum(r => r.ReservaAsientos.Count)
+                Vendidos = v.Reservas.Where(r => r.Estado != "Cancelada" && r.Estado != "Vencida").Sum(r => r.ReservaAsientos.Count)
             }).ToListAsync();
 
             return filas.Select(x =>

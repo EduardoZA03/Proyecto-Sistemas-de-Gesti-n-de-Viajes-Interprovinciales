@@ -9,7 +9,7 @@ namespace WebApplication1.Models
         public int IdUsuario { get; set; }
         public int IdViaje { get; set; }
         public DateTime FechaReserva { get; set; }
-        public string Estado { get; set; } = string.Empty; // Pendiente, Confirmada, Cancelada
+        public string Estado { get; set; } = string.Empty; // Pendiente, Confirmada, Cancelada, Vencida
         public decimal Total { get; set; }
 
         public Usuario Usuario { get; set; } = null!;

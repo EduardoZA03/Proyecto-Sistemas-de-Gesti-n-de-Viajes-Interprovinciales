@@ -130,7 +130,7 @@ El Administrador puede crear más cuentas desde **Usuarios → Nueva cuenta**.
 
 **Tarifas.** Cada viaje tiene 4 tarifas calculadas sobre el precio base: General (100 %), Estudiante (80 %), Tercera Edad (70 %) y Niño (50 %). Al reservar se elige por edad: menor de 12 años = Niño, 60 o más = Tercera Edad, el resto General.
 
-**Estados de una reserva.** `Pendiente` → (cobrar) → `Confirmada` → (cancelar) → `Cancelada`. Un asiento reservado, aunque esté pendiente de pago, cuenta como ocupado. Al cancelar queda libre otra vez.
+**Estados de una reserva.** `Pendiente` → (cobrar) → `Confirmada` → (cancelar) → `Cancelada`. Un asiento reservado, aunque esté pendiente de pago, cuenta como ocupado. Al cancelar queda libre otra vez. Si una reserva sigue `Pendiente` cuando su viaje ya salió, el servicio automático la pasa a `Vencida` y anula su pago pendiente: ya no se puede cobrar ni cancelar, y no cuenta como asiento vendido.
 
 **Estados de un viaje.** `Programado` → `En ruta` → `Finalizado` (o `Cancelado`).
 - El **chofer** o el administrador marcan *Partió* y *Llegó*; así se guardan las horas reales.

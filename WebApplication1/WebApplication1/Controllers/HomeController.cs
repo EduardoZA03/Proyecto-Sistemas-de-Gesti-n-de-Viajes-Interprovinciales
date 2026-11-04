@@ -44,7 +44,7 @@ namespace WebApplication1.Controllers
                 .Select(v => new
                 {
                     v.Bus.CapacidadAsientos,
-                    Vendidos = v.Reservas.Where(r => r.Estado != "Cancelada").Sum(r => r.ReservaAsientos.Count)
+                    Vendidos = v.Reservas.Where(r => r.Estado != "Cancelada" && r.Estado != "Vencida").Sum(r => r.ReservaAsientos.Count)
                 })
                 .ToListAsync();
             var ocupacion = proximos.Count == 0
@@ -91,7 +91,7 @@ namespace WebApplication1.Controllers
                         v.FechaSalida,
                         v.HoraSalida,
                         Capacidad = v.Bus.CapacidadAsientos,
-                        Vendidos = v.Reservas.Where(r => r.Estado != "Cancelada").Sum(r => r.ReservaAsientos.Count)
+                        Vendidos = v.Reservas.Where(r => r.Estado != "Cancelada" && r.Estado != "Vencida").Sum(r => r.ReservaAsientos.Count)
                     })
                     .ToListAsync())
                 .Select(v => new ViajeProximoVM

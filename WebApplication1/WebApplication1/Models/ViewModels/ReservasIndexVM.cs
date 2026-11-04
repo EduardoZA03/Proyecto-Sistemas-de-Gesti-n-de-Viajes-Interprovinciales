@@ -12,7 +12,7 @@ namespace WebApplication1.Models.ViewModels
         public string Asientos { get; set; } = string.Empty;
         public decimal Total { get; set; }
         public decimal Pagado { get; set; }
-        public string Estado { get; set; } = string.Empty; // Pendiente, Confirmada, Cancelada
+        public string Estado { get; set; } = string.Empty; // Pendiente, Confirmada, Cancelada, Vencida
 
         public bool PuedeCobrar { get; set; }
         public bool PuedeCancelar { get; set; }

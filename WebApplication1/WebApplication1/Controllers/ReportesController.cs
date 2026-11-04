@@ -302,7 +302,7 @@ namespace WebApplication1.Controllers
                 v.FechaSalida,
                 Ruta = v.Ruta.Origen.NombreCiudad + " - " + v.Ruta.Destino.NombreCiudad,
                 Capacidad = v.Bus.CapacidadAsientos,
-                Vendidos = v.Reservas.Where(r => r.Estado != "Cancelada").Sum(r => r.ReservaAsientos.Count)
+                Vendidos = v.Reservas.Where(r => r.Estado != "Cancelada" && r.Estado != "Vencida").Sum(r => r.ReservaAsientos.Count)
             }).ToListAsync();
 
             // Ingresos del período: pagos cobrados de reservas no canceladas
