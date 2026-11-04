@@ -3,9 +3,10 @@ using Microsoft.EntityFrameworkCore;
 namespace WebApplication1.Data
 {
     // Servicio en segundo plano que mantiene al día el estado de los viajes sin que nadie tenga que hacerlo a mano.
-    //   Programado -> En ruta     cuando llega la hora de salida.
-    //   En ruta    -> Finalizado  cuando pasa la llegada estimada (duración de la ruta) más una tolerancia,
-    //                             por si nadie marcó la llegada.
+    //   Programado -> En ruta     cuando pasa la hora de salida más una tolerancia (30 min por defecto),
+    //                             por si nadie marcó la partida.
+    //   En ruta    -> Finalizado  cuando pasa la llegada estimada (duración de la ruta) más una tolerancia
+    //                             (30 min por defecto), por si nadie marcó la llegada.
     // No escribe horas reales: esas las registra el chofer o el administrador, y de ellas sale el reporte de retrasos.
     public class ActualizadorEstadoViajes : BackgroundService
     {
@@ -63,7 +64,7 @@ namespace WebApplication1.Data
             foreach (var v in abiertos)
             {
                 var salida = TiempoViaje.Salida(v);
-                if (v.Estado == EstadosViaje.Programado && ahora >= salida)
+                if (v.Estado == EstadosViaje.Programado && ahora >= salida + TiempoViaje.ToleranciaSalidaAutomatica)
                 {
                     v.Estado = EstadosViaje.EnRuta;
                     aRuta++;

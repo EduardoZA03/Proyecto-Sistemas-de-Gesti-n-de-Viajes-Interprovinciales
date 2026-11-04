@@ -22,7 +22,7 @@
 </div>
 <p class="text-muted">
     Seguimiento de los viajes de @etiquetaDia: cuáles están por salir, cuáles van en ruta y cuáles ya llegaron.
-    El sistema pasa solo los viajes a «En ruta» a la hora de salida y los cierra cuando pasa su llegada estimada con 3 horas de margen,
+    Si nadie lo registra, el sistema pasa solo un viaje a «En ruta» 30 minutos después de su hora de salida y lo cierra 30 minutos después de su llegada estimada,
     revisando cada @(Model.IntervaloSegundos >= 60 ? (Model.IntervaloSegundos / 60) + " min" : Model.IntervaloSegundos + " s")
     @(Model.UltimaActualizacionAutomatica is { } u ? $"(última revisión a las {u:HH:mm:ss})." : "(aún no hizo su primera revisión).")
     La hora real de partida y llegada la registra el chofer o se marca desde aquí.

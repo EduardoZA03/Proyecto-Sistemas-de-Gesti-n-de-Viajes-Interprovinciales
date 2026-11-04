@@ -680,8 +680,8 @@ BEGIN
                         b.H % 16 + CASE WHEN b.H % 9 = 0 THEN 20 ELSE 0 END AS DemoraSalida,   -- minutos tarde al salir
                         (b.H / 7) % 55 - 25 AS DemoraRuta) t                                   -- minutos de más o de menos en el camino
     CROSS APPLY (SELECT CASE WHEN b.H % 23 = 0 THEN N'Cancelado'
-                             WHEN b.Salida > @ahora THEN N'Programado'
-                             WHEN DATEADD(HOUR, 3, t.LlegadaEst) <= @ahora THEN N'Finalizado'
+                             WHEN DATEADD(MINUTE, 30, b.Salida) > @ahora THEN N'Programado'
+                             WHEN DATEADD(MINUTE, 30, t.LlegadaEst) <= @ahora THEN N'Finalizado'
                              ELSE N'En ruta' END AS Estado) e
     WHERE b.Ciclo <> 0;
 
