@@ -36,10 +36,10 @@ namespace WebApplication1.Data
                 {
                     using var scope = _scopes.CreateScope();
                     var db = scope.ServiceProvider.GetRequiredService<ChaskiRutaContext>();
-                    var (aRuta, finalizados) = await ActualizarAsync(db, DateTime.Now);
+                    var (aRuta, finalizados, vencidas) = await ActualizarAsync(db, DateTime.Now);
                     UltimaEjecucion = DateTime.Now;
-                    if (aRuta + finalizados > 0)
-                        _log.LogInformation("Estados de viajes actualizados: {ARuta} pasaron a En ruta y {Finalizados} a Finalizado.", aRuta, finalizados);
+                    if (aRuta + finalizados + vencidas > 0)
+                        _log.LogInformation("Estados actualizados: {ARuta} viajes pasaron a En ruta, {Finalizados} a Finalizado y {Vencidas} reservas a Vencida.", aRuta, finalizados, vencidas);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -52,8 +52,8 @@ namespace WebApplication1.Data
             }
         }
 
-        // Aplica las reglas de tiempo a todos los viajes que aún están abiertos
-        public static async Task<(int ARuta, int Finalizados)> ActualizarAsync(ChaskiRutaContext db, DateTime ahora)
+        // Aplica las reglas de tiempo a los viajes que aún están abiertos y vence las reservas sin pago de viajes que ya salieron
+        public static async Task<(int ARuta, int Finalizados, int Vencidas)> ActualizarAsync(ChaskiRutaContext db, DateTime ahora)
         {
             var abiertos = await db.Viajes.Include(v => v.Ruta)
                 .Where(v => (v.Estado == EstadosViaje.Programado || v.Estado == EstadosViaje.EnRuta) && v.FechaSalida <= ahora.Date)
@@ -78,7 +78,30 @@ namespace WebApplication1.Data
 
             if (aRuta + finalizados > 0)
                 await db.SaveChangesAsync();
-            return (aRuta, finalizados);
+            return (aRuta, finalizados, await VencerReservasAsync(db, ahora));
+        }
+
+        // Una reserva "Pendiente" cuyo viaje ya salió no se puede cobrar ni cancelar: pasa a "Vencida" y su pago pendiente se anula
+        public static async Task<int> VencerReservasAsync(ChaskiRutaContext db, DateTime ahora)
+        {
+            var hoy = ahora.Date;
+            var hora = ahora.TimeOfDay;
+
+            var hayPendientes = await db.Reservas.AnyAsync(r => r.Estado == "Pendiente"
+                && (r.Viaje.FechaSalida < hoy || (r.Viaje.FechaSalida == hoy && r.Viaje.HoraSalida <= hora)));
+            if (!hayPendientes) return 0;
+
+            await using var tx = await db.Database.BeginTransactionAsync();
+            await db.Pagos
+                .Where(p => p.Estado == "Pendiente" && p.Reserva.Estado == "Pendiente"
+                    && (p.Reserva.Viaje.FechaSalida < hoy || (p.Reserva.Viaje.FechaSalida == hoy && p.Reserva.Viaje.HoraSalida <= hora)))
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.Estado, "Anulado"));
+            var vencidas = await db.Reservas
+                .Where(r => r.Estado == "Pendiente"
+                    && (r.Viaje.FechaSalida < hoy || (r.Viaje.FechaSalida == hoy && r.Viaje.HoraSalida <= hora)))
+                .ExecuteUpdateAsync(s => s.SetProperty(r => r.Estado, "Vencida"));
+            await tx.CommitAsync();
+            return vencidas;
         }
     }
 }

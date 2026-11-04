@@ -27,7 +27,7 @@
             <div class="col-md-3">
                 <label class="form-label">Estado</label>
                 <select name="estado" class="form-select">
-                    @foreach (var op in new[] { "Todos", "Pendiente", "Confirmada", "Cancelada" })
+                    @foreach (var op in new[] { "Todos", "Pendiente", "Confirmada", "Cancelada", "Vencida" })
                     {
                         <option value="@op" selected="@(Model.Estado == op)">@op</option>
                     }
@@ -71,6 +71,7 @@
                         {
                             "Confirmada" => "bg-success-subtle text-success",
                             "Pendiente" => "bg-warning-subtle text-warning",
+                            "Vencida" => "bg-secondary-subtle text-secondary",
                             _ => "bg-danger-subtle text-danger"
                         };
                         <tr>

@@ -64,8 +64,8 @@ namespace WebApplication1.Controllers
                 v.PrecioBase,
                 v.Estado,
                 Capacidad = v.Bus.CapacidadAsientos,
-                Vendidos = v.Reservas.Where(x => x.Estado != "Cancelada").Sum(x => x.ReservaAsientos.Count),
-                ReservasActivas = v.Reservas.Count(x => x.Estado != "Cancelada")
+                Vendidos = v.Reservas.Where(x => x.Estado != "Cancelada" && x.Estado != "Vencida").Sum(x => x.ReservaAsientos.Count),
+                ReservasActivas = v.Reservas.Count(x => x.Estado != "Cancelada" && x.Estado != "Vencida")
             }).ToListAsync();
 
             var ahora = DateTime.Now;

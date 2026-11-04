@@ -874,7 +874,7 @@ INSERT @reglas (Tabla, Nombre, Condicion) VALUES
  (N'Viaje',          N'CK_Viaje_HorasReales',      N'FechaHoraSalidaReal IS NULL OR FechaHoraLlegadaReal IS NULL OR FechaHoraLlegadaReal > FechaHoraSalidaReal'),
  (N'Tarifa',         N'CK_Tarifa_Tipo',            N'TipoTarifa IN (N''General'', N''Estudiante'', N''Tercera Edad'', N''Niño'')'),
  (N'Tarifa',         N'CK_Tarifa_Estado',          N'Estado IN (N''Activo'', N''Inactivo'')'),
- (N'Reserva',        N'CK_Reserva_Estado',         N'Estado IN (N''Pendiente'', N''Confirmada'', N''Cancelada'')'),
+ (N'Reserva',        N'CK_Reserva_Estado',         N'Estado IN (N''Pendiente'', N''Confirmada'', N''Cancelada'', N''Vencida'')'),
  (N'Reserva',        N'CK_Reserva_Total',          N'Total >= 0'),
  (N'ReservaAsiento', N'CK_RA_Estado',              N'Estado IN (N''Reservado'', N''Cancelado'')'),
  (N'ReservaAsiento', N'CK_RA_Precio',              N'Precio >= 0'),
@@ -883,6 +883,10 @@ INSERT @reglas (Tabla, Nombre, Condicion) VALUES
  (N'Pago',           N'CK_Pago_Metodo',            N'MetodoPago IN (N''Efectivo'', N''Tarjeta'', N''Yape'', N''Plin'', N''Transferencia'')'),
  (N'Cancelacion',    N'CK_Cancelacion_Estado',     N'Estado IN (N''Procesada'', N''Reembolsado'', N''Sin devolución'')'),
  (N'Cancelacion',    N'CK_Cancelacion_Monto',      N'MontoReembolso >= 0');
+
+-- Una base que ya tenía la regla de estados de reserva sin "Vencida" la recibe actualizada
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_Reserva_Estado' AND definition NOT LIKE N'%Vencida%')
+    ALTER TABLE dbo.Reserva DROP CONSTRAINT CK_Reserva_Estado;
 
 DECLARE @i INT = 1, @n INT = (SELECT COUNT(*) FROM @reglas), @t SYSNAME, @nom SYSNAME, @cond NVARCHAR(MAX), @sql NVARCHAR(MAX), @malos INT;
 WHILE @i <= @n
